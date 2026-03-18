@@ -1,5 +1,5 @@
 # IOT-van-der-Werf-3D
-Het IOT project van groepje 3D in samenwerking met van der Werf
+Het IOT project van groepje D3 in opdracht van groenvoorziening van der Werf B.V.
 
-Link naar scrum board:
-[https://st-team-x5g3vm06.atlassian.net/jira/software/projects/SCRUM/boards/1/backlog?atlOrigin=eyJpIjoiMDY3NmMxMzcxMGNiNDdiYmI1MDMwYWJlZGNkYTNlMTgiLCJwIjoiaiJ9](url)
+Link naar scrum board (Github projects):
+[https://github.com/users/Stinna1235/projects/2](URL)
