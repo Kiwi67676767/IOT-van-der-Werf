@@ -1,0 +1,28 @@
+/* Aangepaste stijlen voor de tabel */
+.table th, .table td {
+    padding: 12px;
+    text-align: center;
+}
+
+.table th {
+    background-color: #f8f9fa; /* Lichte achtergrondkleur voor tabelkoppen */
+    color: #495057;
+}
+
+.table-striped tbody tr:nth-child(odd) {
+    background-color: #f9f9f9; /* Alternatieve achtergrondkleur voor gestreepte rijen */
+}
+
+.table-hover tbody tr:hover {
+    background-color: #e9ecef; /* Verandering van achtergrondkleur bij hoveren */
+}
+
+.table-responsive {
+    overflow-x: auto; /* Zorgt ervoor dat de tabel horizontaal scrollbaar is bij kleinere schermen */
+}
+
+/* Extra styling voor de tekst in de tabel */
+.table td, .table th {
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+}

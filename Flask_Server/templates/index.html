@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Pico Metingen{% endblock %}
+
+{% block content %}
+
+<div>
+    <h1>Pico Metingen</h1>
+    
+    <div>
+        <!-- Controleer of er metingen zijn -->
+        {% if metingen %}
+            <table class="table table-bordered table-striped table-hover table-responsive table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Hoogte</th>
+                        <th scope="col">Tijd van Meting</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Loop door de metingen en toon de gegevens -->
+                    {% for meting in metingen %}
+                        <tr>
+                            <td>{{ meting.id }}</td>
+                            <td>{{ meting.hoogte }}</td>
+                            <td>{{ meting.tijd_van_meting }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Er zijn geen metingen in de database.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
