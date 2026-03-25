@@ -17,8 +17,24 @@ def api_metingen():
     return [{"id": m.id, "hoogte": m.hoogte, "tijd_van_meting": m.tijd_van_meting.isoformat()} for m in metingen]
 
 
-@routes.route("api/getfields")
+@routes.route("/api/getfields")
 def getFields():
     fields = ['test']
 
     return fields
+
+
+@routes.route("/api/postmeting", methods=["POST"])
+def post_meting():
+    try:
+        h = float(request.json['hoogte'])
+        
+        nieuwe_meting = Meting(hoogte=h)
+        db.session.add(nieuwe_meting)
+        db.session.commit()
+        
+        return {"id": nieuwe_meting.id, "status": "success"}, 201
+
+    except (KeyError, ValueError, TypeError, Exception):
+        # Vangt alles op: mist 'hoogte', tekst i.p.v. getal, of geen JSON.
+        return {"error": "Ongeldige input"}, 400
