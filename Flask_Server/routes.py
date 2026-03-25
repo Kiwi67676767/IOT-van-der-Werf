@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from extensions import db
+from extensions import db, socketio
 from models import Meting
 
 routes = Blueprint('routes', __name__)
@@ -33,7 +33,14 @@ def post_meting():
         db.session.add(nieuwe_meting)
         db.session.commit()
         
+        # Update tabel
+        socketio.emit('update_tabel', {
+            "id": nieuwe_meting.id, 
+            "hoogte": nieuwe_meting.hoogte
+        })
+
         return {"id": nieuwe_meting.id, "status": "success"}, 201
+    
 
     except (KeyError, ValueError, TypeError, Exception):
         # Vangt alles op: mist 'hoogte', tekst i.p.v. getal, of geen JSON.
