@@ -1,4 +1,4 @@
-from machine import I2C, Pin
+from machine import I2C, SoftI2C, Pin
 from vl53l4cd import VL53L4CD
 
 # Make sure to set the correct pins!
