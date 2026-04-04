@@ -1,0 +1,54 @@
+Project IOT: Van der Werf User interface
+
+Hoofddoel User Interface:
+
+-Overzicht van optimale maairoutes creëren aan de hand van gemeten data over grashoogte.
+-Overzicht/rapportage van verricht maaiwerk creëren voor opdrachtgevers.
+
+Belangrijkste onderdelen:
+
+-Grashoogte (in cm)
+-Status van gras (hoog/laag, te laat gemaaid/te vroeg gemaaid)
+-Overzicht van waar de machine heeft gemaaid (voor zowel machinist als opdrachtgever)
+-Weergave van de meest optimale maairoute (GiS)
+
+Design:
+
+Interactieve onderdelen:
+
+GiS Kaart(?)
+
+-Kaart met gebieden (velden)
+-Verdeeld in kleuren op basis van status van het gras(te vroeg, te laat, perfect)
+-Route die de machine heeft afgelegd
+-De meest optimale route:
+	-Onder de kaart een knop "bereken optimale route"
+	-Route gehighlight voor machinist
+	-Optioneel: tijdsduur
+
+Filters (optioneel)
+-Grashoogte
+-Status (hoog, laag, perfect)
+-Tijd van meting (afgelopen uur, dag, etc.)
+
+Display-onderdelen:
+
+Logo
+
+Header:
+
+-Home
+-Kaart
+-Geschiedenis
+-Instellingen(?)
+
+Grasdata:
+
+-Gemiddelde grashoogte (per gebied)
+-Metingresultaten met tijd van meting (of alleen de meest recente meting)
+-Eventueel kan deze data gefilterd worden.
+
+Geschiedenis
+-Meest recente meting
+-Waarde van meest recente meting
+
