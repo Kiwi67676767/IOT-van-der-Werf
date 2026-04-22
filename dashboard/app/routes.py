@@ -9,6 +9,10 @@ main = Blueprint('main', __name__)
 def index():
     return render_template('index.html')
 
+@main.route('/velden')
+def fields():
+    return render_template('fields.html')
+
 # Inloggen
 @main.route('/login', methods=['GET', 'POST'])
 def login():
