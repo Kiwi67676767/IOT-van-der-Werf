@@ -1,0 +1,397 @@
+<!doctype html>
+
+<html class="light" lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta content="width=device-width, initial-scale=1.0" name="viewport" />
+		<title>van der Werf B.V. - Dashboard</title>
+		<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+		<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+		<script id="tailwind-config">
+			tailwind.config = {
+				darkMode: "class",
+				theme: {
+					extend: {
+						colors: {
+							primary: "#0f5238",
+							"primary-fixed-dim": "#95d4b3",
+							"on-primary-fixed": "#002114",
+							"primary-container": "#2d6a4f",
+							"surface-container-highest": "#e1e3e4",
+							"primary-fixed": "#b1f0ce",
+							"secondary-container": "#d7e5bb",
+							"tertiary-fixed-dim": "#9ecfd1",
+							"surface-bright": "#f8f9fa",
+							"on-surface": "#191c1d",
+							"secondary-fixed-dim": "#becca3",
+							"surface-tint": "#2c694e",
+							"on-primary-fixed-variant": "#0e5138",
+							outline: "#707973",
+							"outline-variant": "#bfc9c1",
+							"secondary-fixed": "#dae8be",
+							tertiary: "#1c4f51",
+							"on-background": "#191c1d",
+							"surface-container": "#edeeef",
+							secondary: "#566342",
+							"inverse-primary": "#95d4b3",
+							"inverse-on-surface": "#f0f1f2",
+							"on-error": "#ffffff",
+							"on-tertiary-fixed-variant": "#1a4e50",
+							"on-primary": "#ffffff",
+							"surface-container-low": "#f3f4f5",
+							"inverse-surface": "#2e3132",
+							"on-secondary-fixed": "#141f05",
+							"on-tertiary-fixed": "#002021",
+							"on-surface-variant": "#404943",
+							"surface-container-high": "#e7e8e9",
+							"on-tertiary": "#ffffff",
+							"on-primary-container": "#a8e7c5",
+							"on-error-container": "#93000a",
+							"error-container": "#ffdad6",
+							surface: "#f8f9fa",
+							"on-secondary": "#ffffff",
+							"surface-dim": "#d9dadb",
+							"surface-container-lowest": "#ffffff",
+							"tertiary-fixed": "#b9ecee",
+							"on-secondary-container": "#5a6745",
+							background: "#f8f9fa",
+							"on-secondary-fixed-variant": "#3f4b2c",
+							"on-tertiary-container": "#b1e3e5",
+							"tertiary-container": "#366769",
+							"surface-variant": "#e1e3e4",
+							error: "#ba1a1a",
+						},
+						borderRadius: {
+							DEFAULT: "0.25rem",
+							lg: "0.5rem",
+							xl: "0.75rem",
+							full: "9999px",
+						},
+						spacing: {
+							sm: "12px",
+							md: "24px",
+							margin: "32px",
+							xs: "4px",
+							xl: "64px",
+							gutter: "24px",
+							base: "8px",
+							lg: "40px",
+						},
+						fontFamily: {
+							"label-md": ["Manrope"],
+							caption: ["Manrope"],
+							"headline-xl": ["Manrope"],
+							"headline-lg": ["Manrope"],
+							"label-lg": ["Manrope"],
+							"body-md": ["Manrope"],
+							"headline-md": ["Manrope"],
+							"body-lg": ["Manrope"],
+						},
+						fontSize: {
+							"label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+							caption: ["11px", { lineHeight: "14px", fontWeight: "400" }],
+							"headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "700" }],
+							"headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+							"label-lg": ["14px", { lineHeight: "20px", fontWeight: "600" }],
+							"body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+							"headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+							"body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+						},
+					},
+				},
+			};
+		</script>
+		<style>
+			.material-symbols-outlined {
+				font-variation-settings:
+					"FILL" 0,
+					"wght" 400,
+					"GRAD" 0,
+					"opsz" 24;
+			}
+			.material-symbols-outlined.fill {
+				font-variation-settings:
+					"FILL" 1,
+					"wght" 400,
+					"GRAD" 0,
+					"opsz" 24;
+			}
+
+			/* Soft ambient shadows */
+			.ambient-shadow {
+				box-shadow: 0 4px 20px rgba(45, 106, 79, 0.08);
+			}
+		</style>
+	</head>
+	<body class="bg-surface font-body-md text-body-md text-on-surface antialiased overflow-x-hidden min-h-screen">
+		<!-- TopNavBar -->
+		<header class="fixed top-0 right-0 w-[calc(100%-280px)] h-16 border-b z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-emerald-100/50 dark:border-emerald-900/50 shadow-sm shadow-emerald-900/5">
+			<div class="flex items-center justify-between px-6 w-full ml-auto h-full">
+				<div class="flex items-center gap-4 w-1/4 mx-auto">
+					<div class="relative w-full max-w-md">
+						<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+						<input
+							class="w-full bg-surface-container-low border border-outline-variant rounded-full py-2 pl-10 pr-4 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-md text-body-md"
+							placeholder="Zoeken..."
+							type="text" />
+					</div>
+				</div>
+				<div class="flex items-center gap-4 text-emerald-800 dark:text-emerald-400">
+					<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 transition-colors active:scale-95 duration-150">
+						<span class="material-symbols-outlined" data-icon="settings">settings</span>
+					</button>
+					<div class="w-8 h-8 rounded-full bg-secondary-container overflow-hidden ml-2 flex-shrink-0 border border-outline-variant">
+						<img
+							alt="-PF "
+							class="w-full h-full object-cover"
+							src="" />
+					</div>
+				</div>
+			</div>
+		</header>
+		<!-- SideNavBar -->
+		<nav
+			class="fixed left-0 top-0 h-full w-[280px] border-r z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-emerald-100/50 dark:border-emerald-900/50 shadow-xl shadow-emerald-900/10 flex flex-col py-8 gap-4 font-manrope text-sm font-medium text-emerald-700 dark:text-emerald-400">
+			<!-- Header -->
+			<div class="px-6 pb-6 border-b border-emerald-100/50 flex items-center gap-3">
+				<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-md shadow-primary/20">
+					<span class="material-symbols-outlined">eco</span>
+				</div>
+				<div>
+					<h1 class="text-lg font-black text-emerald-900 dark:text-emerald-50 uppercase tracking-widest">van der Werf B.V.</h1>
+				</div>
+			</div>
+			<!-- Navigation Links -->
+			<div class="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
+				<a class="flex items-center gap-3 px-4 py-3 bg-emerald-700 text-white rounded-tr-2xl rounded-br-2xl shadow-lg shadow-emerald-700/20 mr-2 -ml-3 pl-7" href="#">
+					<span class="material-symbols-outlined text-[20px] fill" data-icon="monitoring">monitoring</span>
+					<span class="font-label-lg text-label-lg">Overzicht</span>
+				</a>
+				<a href="/velden" class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/50 hover:translate-x-1 transition-all duration-300 rounded-lg group" href="#">
+					<span class="material-symbols-outlined text-[20px]" data-icon="potted_plant">potted_plant</span>
+					<span class="font-label-lg text-label-lg">Velden</span>
+				</a>
+				<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/50 hover:translate-x-1 transition-all duration-300 rounded-lg group" href="#">
+					<span class="material-symbols-outlined text-[20px]" data-icon="event_available">event_available</span>
+					<span class="font-label-lg text-label-lg">Werkschema's</span>
+				</a>
+				<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/50 hover:translate-x-1 transition-all duration-300 rounded-lg group" href="#">
+					<span class="material-symbols-outlined text-[20px]" data-icon="group">group</span>
+					<span class="font-label-lg text-label-lg">Team</span>
+				</a>
+				<!-- Active Tab -->
+				<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50/50 hover:translate-x-1 transition-all duration-300 rounded-lg group" href="#">
+					<span class="material-symbols-outlined text-[20px]" data-icon="group">group</span>
+					<span class="font-label-lg text-label-lg">Statistieken</span>
+				</a>
+			</div>
+			<!-- Footer Actions -->
+			<div class="px-4 pt-4 border-t border-emerald-100/50 flex flex-col gap-2">
+				<a class="flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:text-emerald-700 rounded-lg transition-colors" href="#">
+					<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+					<span class="font-label-lg text-label-lg">Instellingen</span>
+				</a>
+				<a class="flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:text-error rounded-lg transition-colors" href="#">
+					<span class="material-symbols-outlined text-[20px]" data-icon="logout">logout</span>
+					<span class="font-label-lg text-label-lg">Uitloggen</span>
+				</a>
+				<div class="mt-4 px-2">
+					<button class="w-full py-2.5 px-4 rounded-lg border border-primary-container text-primary-container font-label-lg text-label-lg hover:bg-primary-container hover:text-white transition-colors">Contact Support</button>
+				</div>
+			</div>
+		</nav>
+		<!-- Main Content Canvas -->
+		<main class="ml-[280px] pt-16 min-h-screen bg-surface p-margin">
+			<div class="max-w-7xl mx-auto space-y-md">
+				<!-- Page Header -->
+				<div class="flex justify-between items-end mb-margin">
+					<div>
+						<h2 class="font-headline-xl text-headline-xl text-on-surface mb-2">Overzicht</h2>
+						<p class="font-body-md text-body-md text-on-surface-variant">Hier vindt u het overzicht van alle velden</p>
+					</div>
+					<div class="flex gap-3">
+						<button class="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface font-label-lg text-label-lg flex items-center gap-2 hover:bg-surface-container-highest transition-colors">
+							<span class="material-symbols-outlined text-[18px]">download</span>
+							Exporteren naar PDF
+						</button>
+					</div>
+				</div>
+				<!-- Bento Grid Layout -->
+				<div class="grid grid-cols-12 gap-gutter">
+					<!-- Metrics Row (Top) -->
+					<div class="col-span-12 grid grid-cols-3 gap-gutter">
+						<!-- Metric 1 -->
+						<div class="bg-white rounded-xl p-md ambient-shadow border border-surface-variant relative overflow-hidden group">
+							<div class="flex justify-between items-start mb-4 relative z-10">
+								<div class="w-10 h-10 rounded-lg bg-primary-container/10 flex items-center justify-center text-primary-container">
+									<span class="material-symbols-outlined">landscape</span>
+								</div>
+								<span class="inline-flex items-center gap-1 text-primary text-label-md font-label-md bg-primary-fixed/30 px-2 py-1 rounded-md"> <span class="material-symbols-outlined text-[14px]">trending_up</span> 12% </span>
+							</div>
+							<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-1 relative z-10">Total Area Maintained</h3>
+							<p class="font-headline-lg text-headline-lg text-on-surface relative z-10">4,250 <span class="text-body-md font-body-md text-on-surface-variant">Acres</span></p>
+						</div>
+						<!-- Metric 2 -->
+						<div class="bg-white rounded-xl p-md ambient-shadow border border-surface-variant relative overflow-hidden group">
+							<div class="absolute -right-6 -top-6 w-24 h-24 bg-tertiary/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+							<div class="flex justify-between items-start mb-4 relative z-10">
+								<div class="w-10 h-10 rounded-lg bg-tertiary-container/10 flex items-center justify-center text-tertiary-container">
+									<span class="material-symbols-outlined">group_work</span>
+								</div>
+								<span class="inline-flex items-center gap-1 text-on-surface-variant text-label-md font-label-md bg-surface-container px-2 py-1 rounded-md"> Active Now </span>
+							</div>
+							<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-1 relative z-10">Active Crews</h3>
+							<p class="font-headline-lg text-headline-lg text-on-surface relative z-10">18 <span class="text-body-md font-body-md text-on-surface-variant">Teams</span></p>
+						</div>
+						<!-- Metric 3 -->
+						<div class="bg-white rounded-xl p-md ambient-shadow border border-surface-variant relative overflow-hidden group">
+							<div class="absolute -right-6 -top-6 w-24 h-24 bg-secondary/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+							<div class="flex justify-between items-start mb-4 relative z-10">
+								<div class="w-10 h-10 rounded-lg bg-secondary-container/30 flex items-center justify-center text-secondary">
+									<span class="material-symbols-outlined">assignment</span>
+								</div>
+								<span class="inline-flex items-center gap-1 text-error text-label-md font-label-md bg-error-container/50 px-2 py-1 rounded-md"> 5 Urgent </span>
+							</div>
+							<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-1 relative z-10">Upcoming Tasks</h3>
+							<p class="font-headline-lg text-headline-lg text-on-surface relative z-10">34 <span class="text-body-md font-body-md text-on-surface-variant">Pending</span></p>
+						</div>
+					</div>
+					<!-- Main Activity Chart Section -->
+					<div class="col-span-8 bg-white rounded-xl ambient-shadow border border-surface-variant flex flex-col">
+						<div class="p-md border-b border-surface-variant flex justify-between items-center">
+							<h3 class="font-headline-md text-headline-md text-on-surface">Maintenance Activity</h3>
+							<button class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
+								<span class="material-symbols-outlined">more_vert</span>
+							</button>
+						</div>
+						<div class="flex-1 p-md">
+							<!-- Chart Legend -->
+							<div class="flex gap-4 mb-6">
+								<div class="flex items-center gap-2">
+									<div class="w-3 h-3 rounded-full bg-primary-container"></div>
+									<span class="font-label-md text-label-md text-on-surface-variant">Completed</span>
+								</div>
+								<div class="flex items-center gap-2">
+									<div class="w-3 h-3 rounded-full bg-secondary-container"></div>
+									<span class="font-label-md text-label-md text-on-surface-variant">Scheduled</span>
+								</div>
+							</div>
+							<!-- Mock Bar Chart -->
+							<div class="h-64 flex items-end justify-between gap-2 mt-4 relative border-b border-outline-variant pb-2">
+								<!-- Y-axis labels -->
+								<div class="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-caption font-caption text-outline-variant -ml-8 py-2">
+									<span>100</span>
+									<span>75</span>
+									<span>50</span>
+									<span>25</span>
+								</div>
+								<!-- Grid lines -->
+								<div class="absolute inset-0 flex flex-col justify-between pointer-events-none z-0 py-2">
+									<div class="w-full h-px bg-surface-variant border-dashed"></div>
+									<div class="w-full h-px bg-surface-variant border-dashed"></div>
+									<div class="w-full h-px bg-surface-variant border-dashed"></div>
+									<div class="w-full h-px bg-surface-variant border-dashed"></div>
+								</div>
+								<!-- Bars (Mon-Sun) -->
+								<div class="w-full flex justify-around items-end z-10 h-full pt-4">
+									<!-- Mon -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px]">
+											<div class="w-4 bg-primary-container rounded-t-sm h-[140px] hover:opacity-80 transition-opacity cursor-pointer relative group"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[60px] hover:opacity-80 transition-opacity cursor-pointer relative group"></div>
+										</div>
+										<span class="font-label-md text-label-md text-on-surface-variant">Mon</span>
+									</div>
+									<!-- Tue -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px]">
+											<div class="w-4 bg-primary-container rounded-t-sm h-[180px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[40px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+										</div>
+										<span class="font-label-md text-label-md text-on-surface-variant">Tue</span>
+									</div>
+									<!-- Wed -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px]">
+											<div class="w-4 bg-primary-container rounded-t-sm h-[120px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[90px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+										</div>
+										<span class="font-label-md text-label-md text-on-surface-variant">Wed</span>
+									</div>
+									<!-- Thu (Current Day) -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px] relative">
+											<!-- Highlight current day -->
+											<div class="absolute -inset-x-2 -inset-y-4 bg-surface-container-low rounded-lg -z-10"></div>
+											<div class="w-4 bg-primary-container rounded-t-sm h-[160px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[70px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+										</div>
+										<span class="font-label-md text-label-md text-primary font-bold">Thu</span>
+									</div>
+									<!-- Fri -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px]">
+											<div class="w-4 bg-primary-container rounded-t-sm h-[80px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[130px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+										</div>
+										<span class="font-label-md text-label-md text-on-surface-variant">Fri</span>
+									</div>
+									<!-- Sat -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px]">
+											<div class="w-4 bg-primary-container rounded-t-sm h-[40px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[50px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+										</div>
+										<span class="font-label-md text-label-md text-on-surface-variant">Sat</span>
+									</div>
+									<!-- Sun -->
+									<div class="flex flex-col items-center gap-2 w-1/8">
+										<div class="flex gap-1 items-end h-[200px]">
+											<div class="w-4 bg-primary-container rounded-t-sm h-[20px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+											<div class="w-4 bg-secondary-container rounded-t-sm h-[30px] hover:opacity-80 transition-opacity cursor-pointer"></div>
+										</div>
+										<span class="font-label-md text-label-md text-on-surface-variant">Sun</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- Nieuwste metingen Sidebar -->
+					<div class="col-span-4 bg-white rounded-xl ambient-shadow border border-surface-variant flex flex-col overflow-hidden">
+						<div class="p-md border-b border-surface-variant flex justify-between items-center bg-surface-bright">
+							<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+								<span class="material-symbols-outlined text-tertiary">notifications_active</span>
+								Nieuwste metingen
+							</h3>
+						</div>
+						<div class="flex-1 overflow-y-auto">
+							<div class="flex flex-col">
+
+								<!-- Alert Item 2 (Success) -->
+								<div class="p-4 border-b border-surface-variant hover:bg-surface-container-low transition-colors flex gap-4 items-start">
+									<div class="w-10 h-10 rounded-full bg-primary-fixed/50 flex items-center justify-center text-primary-container flex-shrink-0 mt-1">
+										<span class="material-symbols-outlined">check_circle</span>
+									</div>
+									<div class="flex-1 min-w-0">
+										<div class="flex justify-between items-start mb-1">
+											<h4 class="font-label-lg text-label-lg text-on-surface truncate pr-2">Veld A gemaaid</h4>
+											<span class="font-caption text-caption text-on-surface-variant whitespace-nowrap">22-04-26, 14:00</span>
+										</div>
+										<p class="font-body-md text-sm text-on-surface-variant mb-2 line-clamp-2">Nieuwe metingen van Veld A</p>
+										<span class="inline-flex items-center text-primary-container font-label-md text-label-md gap-1 bg-primary-fixed/20 px-2 py-0.5 rounded"> Metingen toegevoegd </span>
+									</div>
+								</div>
+
+							</div>
+						</div>
+						<div class="p-3 border-t border-surface-variant bg-surface-bright text-center">
+							<a href="/metingen" class="text-primary font-label-lg text-label-lg hover:text-primary-container transition-colors w-full py-1">Toon alle metingen</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</main>
+	</body>
+</html>
