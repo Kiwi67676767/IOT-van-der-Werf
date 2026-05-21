@@ -11,4 +11,6 @@ class Meting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.String(50), nullable=False)
     gras_hoogte_cm = db.Column(db.Float, nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
