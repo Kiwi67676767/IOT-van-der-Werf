@@ -53,3 +53,16 @@ def ontvang_data():
     db.session.add(meting)
     db.session.commit()
     return jsonify({"status": "ok"}), 200
+
+
+@main.route('/metingen')
+def toon_metingen():
+    metingen = Meting.query.order_by(Meting.timestamp.desc()).limit(20).all()
+    return jsonify([{
+        "id": m.id,
+        "device_id": m.device_id,
+        "gras_hoogte_cm": m.gras_hoogte_cm,
+        "latitude": m.latitude,
+        "longitude": m.longitude,
+        "timestamp": str(m.timestamp)
+    } for m in metingen])
