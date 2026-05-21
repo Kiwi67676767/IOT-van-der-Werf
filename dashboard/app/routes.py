@@ -43,10 +43,12 @@ def ontvang_data():
     data = request.json
     if not data:
         return jsonify({"error": "Geen data ontvangen"}), 400
-    
+
     meting = Meting(
         device_id=data.get('device_id', 'onbekend'),
-        gras_hoogte_cm=data.get('gras_hoogte_cm')
+        gras_hoogte_cm=data.get('gras_hoogte_cm'),
+        latitude=data.get('latitude'),
+        longitude=data.get('longitude')
     )
     db.session.add(meting)
     db.session.commit()
