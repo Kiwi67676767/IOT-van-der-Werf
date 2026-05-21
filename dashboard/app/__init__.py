@@ -31,5 +31,6 @@ def create_app():
     with app.app_context():
         from .models import User, Meting
         db.create_all()
+        print("Database tabellen aangemaakt!")
         
     return app
