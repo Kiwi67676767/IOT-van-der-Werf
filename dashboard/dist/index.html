@@ -230,6 +230,14 @@
 
     footer { padding: .7rem 1.5rem; border-top: 1px solid #e9ecef; background: #fff; font-size: .76rem; color: #adb5bd; }
 
+    /* ── IMPORT ── */
+    .import-status-ok      { background:#e8f5e9; border:1px solid #a5d6a7; color:#1b5e20; }
+    .import-status-err     { background:#ffebee; border:1px solid #ef9a9a; color:#b71c1c; }
+    .import-status-loading { background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; }
+    .spin { animation: spin .8s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .import-row-exists td { background:#f9fef9 !important; }
+
     /* ── SETTINGS FIX ── */
     .settings-group { background: #f8f9fa; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
     .settings-group label { font-size: .83rem; font-weight: 600; color: #495057; display: block; margin-bottom: .4rem; }
@@ -414,6 +422,7 @@
                   <th style="border:none">Status</th>
                   <th style="border:none">Prioriteit</th>
                   <th style="border:none">Machinist</th>
+                  <th id="th-toewijzen" style="border:none;display:none">Toewijzen</th>
                 </tr>
               </thead>
               <tbody id="v-tbody"></tbody>
@@ -486,6 +495,106 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ══ ARCGIS IMPORT ══ -->
+      <div id="page-import" class="page">
+
+        <!-- Stap 1: URL invoeren -->
+        <div class="dc mb-3">
+          <div class="dch">
+            <i class="bi bi-cloud-arrow-down-fill" style="color:var(--g)"></i>
+            <h6>ArcGIS Feature Service importeren</h6>
+            <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 1 — Verbinding</span>
+          </div>
+          <div class="dcb">
+            <p style="font-size:.84rem;color:#6c757d;margin-bottom:1rem">
+              Voer de URL in van de ArcGIS Feature Service of Feature Layer waar de velden in staan.
+              Zodra een contract wordt aangemaakt en het veld in ArcGIS wordt gezet, kun je het hier importeren.
+            </p>
+            <div class="row g-3 align-items-end">
+              <div class="col-md-8">
+                <label class="form-label fw-semibold" style="font-size:.83rem">Feature Service URL</label>
+                <input id="import-url" type="text" class="form-control"
+                  placeholder="https://services.arcgis.com/.../FeatureServer/0"
+                  value="https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0" />
+                <div style="font-size:.75rem;color:#adb5bd;margin-top:.3rem">
+                  Vul de URL in van jouw ArcGIS Online of Portal feature layer
+                </div>
+              </div>
+              <div class="col-md-2">
+                <button class="btn w-100 py-2" style="background:var(--g);color:#fff;font-weight:600" onclick="testImportVerbinding()">
+                  <i class="bi bi-plug-fill me-1"></i>Verbinden
+                </button>
+              </div>
+              <div class="col-md-2">
+                <button class="btn w-100 py-2 btn-outline-secondary" onclick="resetImport()">
+                  <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Verbindingsstatus -->
+            <div id="import-status" class="mt-3" style="display:none">
+              <div id="import-status-inner" class="p-3 rounded" style="font-size:.84rem"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stap 2: Veld-mapping -->
+        <div class="dc mb-3" id="import-mapping-card" style="display:none">
+          <div class="dch">
+            <i class="bi bi-sliders2" style="color:var(--g)"></i>
+            <h6>Velden koppelen</h6>
+            <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 2 — Mapping</span>
+          </div>
+          <div class="dcb">
+            <p style="font-size:.84rem;color:#6c757d;margin-bottom:1rem">
+              Koppel de ArcGIS attributen aan de velden in het dashboard.
+            </p>
+            <div class="row g-3" id="import-mapping-fields"></div>
+            <div class="mt-3">
+              <button class="btn py-2 px-4" style="background:var(--g);color:#fff;font-weight:600" onclick="laadVooruitblik()">
+                <i class="bi bi-eye me-1"></i>Laad vooruitblik
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stap 3: Preview & import -->
+        <div class="dc" id="import-preview-card" style="display:none">
+          <div class="dch">
+            <i class="bi bi-table" style="color:var(--g)"></i>
+            <h6>Importeer velden — <span id="import-preview-count">0</span> gevonden</h6>
+            <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 3 — Importeer</span>
+            <div class="ms-2 d-flex gap-2">
+              <button class="btn btn-sm" style="background:var(--g);color:#fff;font-weight:600" onclick="importeerGeselecteerde()">
+                <i class="bi bi-cloud-arrow-down me-1"></i>Importeer geselecteerde
+              </button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:var(--gp)">
+                <tr>
+                  <th style="width:40px;border:none;padding:.8rem 1rem">
+                    <input type="checkbox" id="import-select-all" onchange="toggleAlleImport(this.checked)" />
+                  </th>
+                  <th style="border:none">Naam</th>
+                  <th style="border:none">Locatie</th>
+                  <th style="border:none">Coördinaten</th>
+                  <th style="border:none">Status</th>
+                  <th style="border:none">Reeds actief</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody"></tbody>
+            </table>
+          </div>
+          <div class="p-3" id="import-result" style="display:none">
+            <div class="alert alert-success mb-0" style="font-size:.84rem"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ══ TEAM ══ -->
@@ -604,23 +713,8 @@ const USERS = {
   stakeholder2: { pass:'stake456',  name:'Sportpark Noord',    role:'stakeholder', initials:'SN', label:'Stakeholder', assignedVelden:[8,9,10,11,12,13], contractName:'Sportpark Noord BV' },
 };
 
-const VELDEN = [
-  { id:1,  naam:'Veld 1',  loc:'Sportpark Noord A',   lat:52.3702, lng:4.8952, hoogte:145, status:'Hoog',         prio:'Hoog',   machinist:'—' },
-  { id:2,  naam:'Veld 2',  loc:'Stadspark Centrum',   lat:52.3780, lng:4.9010, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'—' },
-  { id:3,  naam:'Veld 3',  loc:'Gemeentepark',        lat:52.3750, lng:4.9000, hoogte:131, status:'Hoog',         prio:'Hoog',   machinist:'Machinist 2' },
-  { id:4,  naam:'Veld 4',  loc:'Berm A9',             lat:52.3680, lng:4.9100, hoogte:95,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
-  { id:5,  naam:'Veld 5',  loc:'Woonwijk West',       lat:52.3640, lng:4.8800, hoogte:78,  status:'OK',           prio:'Laag',   machinist:'—' },
-  { id:6,  naam:'Veld 6',  loc:'Recreatiegebied',     lat:52.3820, lng:4.8750, hoogte:68,  status:'OK',           prio:'Laag',   machinist:'—' },
-  { id:7,  naam:'Veld 7',  loc:'Industrieterrein Z',  lat:52.3590, lng:4.9200, hoogte:34,  status:'Te laag',      prio:'Middel', machinist:'—' },
-  { id:8,  naam:'Veld 8',  loc:'Bedrijventerrein',    lat:52.3600, lng:4.9050, hoogte:37,  status:'Te laag',      prio:'Middel', machinist:'—' },
-  { id:9,  naam:'Veld 9',  loc:'Sportpark Noord B',   lat:52.3708, lng:4.8960, hoogte:158, status:'Hoog',         prio:'Hoog',   machinist:'—' },
-  { id:10, naam:'Veld 10', loc:'Schoolplein Oost',    lat:52.3730, lng:4.9080, hoogte:75,  status:'OK',           prio:'Laag',   machinist:'—' },
-  { id:11, naam:'Veld 11', loc:'Begraafplaats',       lat:52.3660, lng:4.8900, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'—' },
-  { id:12, naam:'Veld 12', loc:'Woonwijk Oost',       lat:52.3720, lng:4.8870, hoogte:88,  status:'OK',           prio:'Laag',   machinist:'—' },
-  { id:13, naam:'Veld 13', loc:'Gemeentegroen N',     lat:52.3800, lng:4.8920, hoogte:110, status:'Hoog',         prio:'Middel', machinist:'—' },
-  { id:14, naam:'Veld 14', loc:'Park De Hoef',        lat:52.3760, lng:4.8840, hoogte:85,  status:'Gemaaid',      prio:'Laag',   machinist:'Machinist 2' },
-  { id:15, naam:'Veld 15', loc:'Berm N244',           lat:52.3550, lng:4.8980, hoogte:90,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
-];
+// Velden worden geladen via ArcGIS import — admin voegt ze toe via "Velden importeren"
+const VELDEN = [];
 
 const ACTIVITY = [
   { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark',        icon:'scissors',               color:'var(--g)' },
@@ -647,6 +741,7 @@ const NAV = {
     { page:'kaart',     icon:'map-fill',      label:'Kaart',    badge:'Live' },
     { page:'velden',    icon:'list-check',    label:'Velden',   badge:'15' },
     { sec:'Beheer' },
+    { page:'import',      icon:'cloud-arrow-down-fill', label:'Velden importeren', badge:'ArcGIS' },
     { page:'team',        icon:'people-fill',   label:'Team' },
     { page:'instellingen',icon:'gear-fill',     label:'Instellingen' },
   ],
@@ -734,7 +829,7 @@ function showPage(page) {
   const btn=document.querySelector(`.sb-link[onclick="showPage('${page}')"]`);
   if(btn) btn.classList.add('active');
 
-  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',team:'Team',instellingen:'Instellingen'};
+  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',import:'Velden importeren',team:'Team',instellingen:'Instellingen'};
   document.getElementById('pg-title').textContent=titles[page]||page;
   document.getElementById('pg-crumb').textContent=titles[page]||page;
 
@@ -791,10 +886,6 @@ function initCharts() {
     yaxis:{labels:{formatter:v=>v+' mm'}},
     tooltip:{x:{format:'MMMM yyyy'},y:{formatter:v=>v+' mm'}},
     grid:{borderColor:'#f0f0f0'},
-    annotations:{yaxis:[
-      {y:120,borderColor:'#f44336',label:{text:'Max grens',style:{color:'#f44336',background:'#ffebee'}}},
-      {y:40, borderColor:'#ff9800',label:{text:'Min grens',style:{color:'#ff9800',background:'#fff3e0'}}},
-    ]},
   }).render();
 
   new ApexCharts(document.querySelector('#pie-chart'), {
@@ -809,8 +900,49 @@ function initCharts() {
 }
 
 /* ═══════════════════════════════════════
-   ARCGIS MAP
+   ARCGIS MAP — POLYGOON WEERGAVE
 ═══════════════════════════════════════ */
+
+// Maak een rechthoekig polygoon (~veldbreedte) rondom een centroid
+function maakPolygon(lat, lng, rings) {
+  if (rings && rings.length) {
+    // Echte ArcGIS polygoon (uit import)
+    return { type:'polygon', rings };
+  }
+  // Genereer ~80m × 60m rechthoek rondom centroid
+  const dLat = 0.00040;  // ~44m
+  const dLng = 0.00065;  // ~44m gecorrigeerd voor breedtegraad NL
+  return {
+    type: 'polygon',
+    rings: [[
+      [lng - dLng, lat - dLat],
+      [lng + dLng, lat - dLat],
+      [lng + dLng, lat + dLat],
+      [lng - dLng, lat + dLat],
+      [lng - dLng, lat - dLat],
+    ]],
+  };
+}
+
+// Kleur op basis van maai-status
+function statusSymbol(status) {
+  const cfg = {
+    'Hoog':          { fill:[244,67,54,40],   border:[244,67,54],   w:3 },
+    'Te laag':       { fill:[255,152,0,40],   border:[255,152,0],   w:2 },
+    'OK':            { fill:[76,175,80,40],   border:[76,175,80],   w:2 },
+    'In uitvoering': { fill:[33,150,243,40],  border:[33,150,243],  w:2 },
+    'Gemaaid':       { fill:[156,39,176,30],  border:[156,39,176],  w:2 },
+  };
+  const c = cfg[status] || { fill:[120,120,120,30], border:[120,120,120], w:2 };
+  return {
+    type: 'simple-fill',
+    color: c.fill,
+    outline: { color: c.border, width: c.w },
+  };
+}
+
+let mapViews = {};  // cache views per container
+
 function initMap(containerId, showAll) {
   require([
     'esri/config','esri/Map','esri/views/MapView',
@@ -822,32 +954,24 @@ function initMap(containerId, showAll) {
     const map = new Map({ basemap:'streets-navigation-vector' });
     const view = new MapView({
       container: containerId,
-      map: map, center:[4.9000,52.372], zoom:13,
+      map: map,
+      center: [4.9000, 52.372],
+      zoom: VELDEN.length ? 13 : 7,
     });
-
-    const statusColor = {
-      'Hoog':         [244,67,54,220],
-      'Te laag':      [255,152,0,220],
-      'OK':           [76,175,80,220],
-      'In uitvoering':[33,150,243,220],
-      'Gemaaid':      [156,39,176,220],
-    };
+    mapViews[containerId] = { view, layer: null };
 
     const layer = new GraphicsLayer();
     const veldenToShow = showAll ? VELDEN : getRoute();
 
-    veldenToShow.forEach((v,idx) => {
-      const col = statusColor[v.status]||[120,120,120,200];
+    veldenToShow.forEach((v, idx) => {
+      const geom = maakPolygon(v.lat, v.lng, v.rings || null);
       layer.add(new Graphic({
-        geometry:{ type:'point', longitude:v.lng, latitude:v.lat },
-        symbol:{
-          type:'simple-marker', color:col, size: v.status==='Hoog'?18:14,
-          outline:{color:[255,255,255],width:2},
-        },
-        attributes:{ ...v, routeNr: showAll ? '' : (idx+1) },
-        popupTemplate:{
-          title:`{naam} — {loc}`,
-          content:`<table class="esri-widget__table">
+        geometry: geom,
+        symbol: statusSymbol(v.status),
+        attributes: { ...v, routeNr: showAll ? '' : (idx + 1) },
+        popupTemplate: {
+          title: `{naam} — {loc}`,
+          content: `<table class="esri-widget__table">
             <tr><th>Status</th><td>{status}</td></tr>
             <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
             <tr><th>Prioriteit</th><td>{prio}</td></tr>
@@ -856,22 +980,50 @@ function initMap(containerId, showAll) {
         },
       }));
 
-      // Routenummer label voor machinistenkaart
+      // Routenummer label (alleen machinistenkaart)
       if (!showAll) {
         layer.add(new Graphic({
-          geometry:{ type:'point', longitude:v.lng, latitude:v.lat },
-          symbol:{
-            type:'text', color:[255,255,255],
-            text: String(idx+1),
-            font:{ size:10, weight:'bold' },
-            yoffset:0,
+          geometry: { type:'point', longitude: v.lng, latitude: v.lat },
+          symbol: {
+            type:'text', color:[255,255,255], haloColor:[0,0,0], haloSize:1.5,
+            text: String(idx + 1), font:{ size:10, weight:'bold' },
           },
         }));
       }
     });
 
     map.add(layer);
+    mapViews[containerId].layer = layer;
   });
+}
+
+// Ververs kaartlaag na import van nieuwe velden
+function refreshMap(containerId, showAll) {
+  const cached = mapViews[containerId];
+  if (!cached) return;
+  require(['esri/Graphic','esri/layers/GraphicsLayer'],
+    function(Graphic, GraphicsLayer) {
+      cached.layer.removeAll();
+      const veldenToShow = showAll ? VELDEN : getRoute();
+      veldenToShow.forEach((v, idx) => {
+        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+        cached.layer.add(new Graphic({
+          geometry: geom,
+          symbol: statusSymbol(v.status),
+          attributes: { ...v, routeNr: showAll ? '' : (idx+1) },
+          popupTemplate: {
+            title:`{naam} — {loc}`,
+            content:`<table class="esri-widget__table">
+              <tr><th>Status</th><td>{status}</td></tr>
+              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+              <tr><th>Prioriteit</th><td>{prio}</td></tr>
+              <tr><th>Machinist</th><td>{machinist}</td></tr>
+            </table>`,
+          },
+        }));
+      });
+    }
+  );
 }
 
 /* ═══════════════════════════════════════
@@ -963,16 +1115,50 @@ function toggleMeting() {
 function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
 function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
 
+const MACHINISTEN = ['—','Machinist 1','Machinist 2'];
+
 function renderVelden(data){
-  document.getElementById('v-tbody').innerHTML=data.map(v=>`<tr>
-    <td class="ps-3 fw-semibold">${v.naam}</td>
-    <td>${v.loc}</td>
-    <td style="color:#adb5bd;font-size:.78rem">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
-    <td><strong style="color:${v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32')}">${v.hoogte}</strong> mm</td>
-    <td>${bsBadge(v.status)}</td>
-    <td>${prioBadge(v.prio)}</td>
-    <td>${v.machinist}</td>
-  </tr>`).join('');
+  const isAdmin = CU && CU.role === 'admin';
+  // Toon/verberg toewijzen-kolom
+  const thTw = document.getElementById('th-toewijzen');
+  if(thTw) thTw.style.display = isAdmin ? '' : 'none';
+
+  if(!data.length){
+    document.getElementById('v-tbody').innerHTML=`<tr><td colspan="8" class="text-center py-4 text-muted" style="font-size:.85rem">
+      Geen velden gevonden. Importeer velden via <strong>Velden importeren</strong>.
+    </td></tr>`;
+    return;
+  }
+
+  document.getElementById('v-tbody').innerHTML=data.map(v=>{
+    const machSelect = isAdmin
+      ? `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
+           ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
+         </select>`
+      : v.machinist;
+    return `<tr>
+      <td class="ps-3 fw-semibold">${v.naam}</td>
+      <td>${v.loc}</td>
+      <td style="color:#adb5bd;font-size:.78rem">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
+      <td><strong style="color:${v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32')}">${v.hoogte}</strong> mm</td>
+      <td>${bsBadge(v.status)}</td>
+      <td>${prioBadge(v.prio)}</td>
+      <td>${isAdmin ? '' : v.machinist}</td>
+      ${isAdmin ? `<td>${machSelect}</td>` : ''}
+    </tr>`;
+  }).join('');
+}
+
+function wijsToe(veldId, machinist) {
+  const v = VELDEN.find(x => x.id === veldId);
+  if (!v) return;
+  v.machinist = machinist;
+  // Toon korte bevestiging
+  const toast = document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;background:var(--g);color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.84rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+  toast.textContent=`✓ ${v.naam} toegewezen aan ${machinist}`;
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 2500);
 }
 
 function filterVelden(){
@@ -1054,6 +1240,277 @@ function renderTeam(){
     <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0"><i class="bi bi-${a.icon}"></i></div>
     <div><div style="font-size:.82rem;font-weight:600">${a.user}</div><div style="font-size:.81rem;color:#495057">${a.msg}</div><div style="font-size:.74rem;color:#adb5bd">${a.time}</div></div>
   </div>`).join('');
+}
+
+/* ═══════════════════════════════════════
+   ARCGIS IMPORT
+═══════════════════════════════════════ */
+let importFeatures   = [];   // ruwe features van ArcGIS
+let importFields     = [];   // beschikbare attributen
+let importMapped     = {};   // mapping { naam, locatie, hoogte }
+
+function setImportStatus(type, html) {
+  const wrap = document.getElementById('import-status');
+  const inner = document.getElementById('import-status-inner');
+  wrap.style.display = 'block';
+  inner.className = 'import-status-' + type;
+  inner.innerHTML = html;
+}
+
+function resetImport() {
+  importFeatures=[]; importFields=[]; importMapped={};
+  document.getElementById('import-status').style.display='none';
+  document.getElementById('import-mapping-card').style.display='none';
+  document.getElementById('import-preview-card').style.display='none';
+  document.getElementById('import-result').style.display='none';
+}
+
+function testImportVerbinding() {
+  const url = document.getElementById('import-url').value.trim();
+  if (!url) { setImportStatus('err','⚠️ Voer een URL in.'); return; }
+
+  setImportStatus('loading',`<i class="bi bi-arrow-clockwise spin me-2"></i>Verbinding maken met ArcGIS…`);
+  document.getElementById('import-mapping-card').style.display='none';
+  document.getElementById('import-preview-card').style.display='none';
+
+  // Gebruik ArcGIS JS SDK FeatureLayer om de service te bevragen
+  require(['esri/config','esri/layers/FeatureLayer'], function(esriConfig, FeatureLayer) {
+    esriConfig.apiKey = ARCGIS_KEY;
+
+    const layer = new FeatureLayer({ url: url });
+
+    layer.load().then(() => {
+      const attrs = layer.fields.map(f => f.name);
+      importFields = attrs;
+
+      setImportStatus('ok',
+        `<i class="bi bi-check-circle-fill me-2"></i>
+         <strong>Verbinding geslaagd</strong> — Layer: <em>${layer.title||'Onbekend'}</em> &nbsp;|&nbsp;
+         ${attrs.length} attributen gevonden &nbsp;|&nbsp;
+         Geometry: ${layer.geometryType}`
+      );
+
+      bouwMappingUI(attrs);
+      document.getElementById('import-mapping-card').style.display='block';
+
+      // Haal eerste 100 features op
+      layer.queryFeatures({ where:'1=1', outFields:['*'], num:100, returnGeometry:true })
+        .then(result => { importFeatures = result.features; })
+        .catch(() => { importFeatures = []; });
+
+    }).catch(err => {
+      setImportStatus('err',
+        `<i class="bi bi-x-circle-fill me-2"></i>
+         <strong>Verbinding mislukt:</strong> ${err.message||'Onbekende fout'}.<br>
+         <small>Controleer de URL en zorg dat de service openbaar toegankelijk is, of gebruik jouw ArcGIS Portal URL.</small>`
+      );
+    });
+  });
+}
+
+function bouwMappingUI(attrs) {
+  const opts = ['— Niet koppelen —', ...attrs].map(a=>`<option value="${a}">${a}</option>`).join('');
+
+  const autoPick = (candidates) => {
+    const lc = candidates.map(c=>c.toLowerCase());
+    return attrs.find(a => lc.some(c => a.toLowerCase().includes(c))) || '';
+  };
+
+  const mappings = [
+    { key:'naam',     label:'Veldnaam',        icon:'card-text',          hint:'Attribuut dat de naam van het veld bevat', auto:['naam','name','title','omschrijving','label'] },
+    { key:'locatie',  label:'Locatienaam',     icon:'geo',                hint:'Bijv. straatnaam, wijk, park', auto:['locatie','location','adres','adress','straat','gebied','wijk','park'] },
+    { key:'hoogte',   label:'Grashoogte (mm)', icon:'rulers',             hint:'Numeriek attribuut met de meting', auto:['hoogte','height','meting','gras','mm','afstand','distance','maaihoogte'] },
+    { key:'contract', label:'Contractnaam',    icon:'file-earmark-text',  hint:'Optioneel: naam van het contract of opdrachtgever', auto:['contract','klant','client','opdrachtgever','stakeholder'] },
+  ];
+
+  document.getElementById('import-mapping-fields').innerHTML = mappings.map(m => {
+    const best = autoPick(m.auto);
+    const optionsHtml = ['— Niet koppelen —', ...attrs].map(a =>
+      `<option value="${a}" ${a===best?'selected':''}>${a}</option>`
+    ).join('');
+    return `<div class="col-md-6 col-lg-3">
+      <div class="settings-group">
+        <label><i class="bi bi-${m.icon} me-1" style="color:var(--g)"></i>${m.label}</label>
+        <select class="form-select form-select-sm" id="map-${m.key}">${optionsHtml}</select>
+        <div style="font-size:.72rem;color:#adb5bd;margin-top:.3rem">${m.hint}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function laadVooruitblik() {
+  importMapped = {
+    naam:     document.getElementById('map-naam').value,
+    locatie:  document.getElementById('map-locatie').value,
+    hoogte:   document.getElementById('map-hoogte').value,
+    contract: document.getElementById('map-contract').value,
+  };
+
+  if (!importFeatures.length) {
+    // Geen echte features (bijv. CORS) – laat demo-preview zien
+    setImportStatus('loading','<i class="bi bi-arrow-clockwise spin me-2"></i>Features ophalen…');
+    setTimeout(() => {
+      importFeatures = genereerDemoFeatures();
+      toonVooruitblik();
+      setImportStatus('ok','<i class="bi bi-check-circle-fill me-2"></i>Features geladen (demo-modus)');
+    }, 1200);
+  } else {
+    toonVooruitblik();
+  }
+}
+
+function maakDemoRings(cx, cy, w=0.0006, h=0.0004) {
+  // Rechthoekig polygoon rondom centroid (wordt opgeslagen als rings)
+  return [[[cx-w,cy-h],[cx+w,cy-h],[cx+w,cy+h],[cx-w,cy+h],[cx-w,cy-h]]];
+}
+
+function genereerDemoFeatures() {
+  // Gesimuleerde grasvelden die een opdrachtgever in ArcGIS zou zetten
+  // Geometry = polygon (rings) zodat validatie slaagt én de kaart een vlak toont
+  return [
+    { attributes:{ FID:101, naam:'Grasveld A', locatie:'Sportpark Zuid',     hoogte:95,  type:'grasveld', contract:'Gemeente Demo' },
+      geometry:{ rings: maakDemoRings(4.910,52.355) }, geometryType:'polygon' },
+    { attributes:{ FID:102, naam:'Gazon B',    locatie:'Berm Ringweg',       hoogte:138, type:'berm gras', contract:'Gemeente Demo' },
+      geometry:{ rings: maakDemoRings(4.925,52.368) }, geometryType:'polygon' },
+    { attributes:{ FID:103, naam:'Grasveld C', locatie:'Woonwijk Noord',     hoogte:62,  type:'groenstrook', contract:'Sportpark BV' },
+      geometry:{ rings: maakDemoRings(4.890,52.382) }, geometryType:'polygon' },
+    { attributes:{ FID:104, naam:'Sportveld D',locatie:'Schoolplein West',   hoogte:80,  type:'sportveld gras', contract:'Sportpark BV' },
+      geometry:{ rings: maakDemoRings(4.895,52.375) }, geometryType:'polygon' },
+    { attributes:{ FID:105, naam:'Groenzone E',locatie:'Gemeentegroen Oost', hoogte:125, type:'plantsoen', contract:'Gemeente Demo' },
+      geometry:{ rings: maakDemoRings(4.918,52.360) }, geometryType:'polygon' },
+    // Bewust geen grasveld — wordt geweigerd bij import
+    { attributes:{ FID:106, naam:'Parkeerterrein F', locatie:'Centrum',      hoogte:0,   type:'verharding', contract:'Gemeente Demo' },
+      geometry:{ x:4.905, y:52.370 }, geometryType:'point' },
+  ];
+}
+
+// Zoekwoorden die duiden op een grasveld
+const GRAS_KEYWORDS = ['gras','gazon','groen','lawn','grass','vegetatie','groenstrook',
+  'bermgras','grasveld','berm','weide','perk','sportveld','voetbal','park','plantsoenen'];
+
+function isGrasveld(attrs, geomType) {
+  // 1. Geometrietype: polygoon is vereist voor een grasveld
+  const isPolygon = !geomType || geomType === 'polygon' || geomType === 'esriGeometryPolygon';
+  // 2. Controleer of een attribuutwaarde een grasgerelateerd woord bevat
+  const attrStr = Object.values(attrs).join(' ').toLowerCase();
+  const hasGrasKeyword = GRAS_KEYWORDS.some(k => attrStr.includes(k));
+  return { isPolygon, hasGrasKeyword, ok: isPolygon || hasGrasKeyword };
+}
+
+function toonVooruitblik() {
+  const card = document.getElementById('import-preview-card');
+  card.style.display='block';
+  document.getElementById('import-result').style.display='none';
+
+  const naamAttr   = importMapped.naam    !== '— Niet koppelen —' ? importMapped.naam    : null;
+  const locAttr    = importMapped.locatie !== '— Niet koppelen —' ? importMapped.locatie : null;
+  const hoogteAttr = importMapped.hoogte  !== '— Niet koppelen —' ? importMapped.hoogte  : null;
+
+  document.getElementById('import-preview-count').textContent = importFeatures.length;
+
+  document.getElementById('import-preview-tbody').innerHTML = importFeatures.map((f,i) => {
+    const attrs  = f.attributes || {};
+    const geom   = f.geometry   || {};
+    const geomType = f.geometryType || (geom.rings ? 'polygon' : geom.x ? 'point' : '');
+    const naam   = naamAttr   ? (attrs[naamAttr]   || `Veld #${attrs.FID||i}`) : `Veld #${i+1}`;
+    const loc    = locAttr    ? (attrs[locAttr]    || '—') : '—';
+    const hoogte = hoogteAttr ? (attrs[hoogteAttr] || '—') : '—';
+    const lat    = geom.y || geom.latitude  || '—';
+    const lng    = geom.x || geom.longitude || (geom.rings ? geom.rings[0][0][0] : '—');
+    const status = typeof hoogte==='number' ? (hoogte>120?'Hoog':(hoogte<40?'Te laag':'OK')) : 'Onbekend';
+    const bsCls  = {Hoog:'bsh','Te laag':'bsl',OK:'bsok',Onbekend:''}[status]||'';
+    const bestaat = VELDEN.some(v=>v.naam===naam&&v.loc===loc);
+    const validatie = isGrasveld(attrs, geomType);
+
+    let validatieBadge = '';
+    if (!validatie.ok) {
+      validatieBadge = `<span class="badge" style="background:#ffebee;color:#c62828" title="Geen grasveld herkend op basis van geometrie/attributen">⚠️ Geen grasveld</span>`;
+    } else if (!validatie.isPolygon) {
+      validatieBadge = `<span class="badge" style="background:#fff3e0;color:#e65100" title="Puntgeometrie — geen polygoongrens beschikbaar">△ Punt</span>`;
+    } else {
+      validatieBadge = `<span class="badge" style="background:var(--gp);color:var(--g)">✓ Grasveld</span>`;
+    }
+
+    return `<tr class="${bestaat?'import-row-exists':''}${!validatie.ok?' table-warning':''}">
+      <td class="ps-3"><input type="checkbox" class="import-cb" data-idx="${i}" ${(bestaat||!validatie.ok)?'':'checked'} /></td>
+      <td class="fw-semibold">${naam}</td>
+      <td>${loc}</td>
+      <td style="font-size:.78rem;color:#adb5bd">${typeof lat==='number'?lat.toFixed(4)+'°N':'—'}, ${typeof lng==='number'?lng.toFixed(4)+'°O':'—'}</td>
+      <td><span class="bs ${bsCls}">${status}</span> ${hoogte!=='—'?`<small class="text-muted">(${hoogte}mm)</small>`:''}</td>
+      <td>${validatieBadge} ${bestaat?'<span class="badge ms-1" style="background:#fff3e0;color:#e65100">Al actief</span>':''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleAlleImport(checked) {
+  document.querySelectorAll('.import-cb').forEach(cb => cb.checked = checked);
+}
+
+function importeerGeselecteerde() {
+  const geselecteerd = [];
+  document.querySelectorAll('.import-cb:checked').forEach(cb => {
+    geselecteerd.push(importFeatures[parseInt(cb.dataset.idx)]);
+  });
+  if (!geselecteerd.length) { alert('Selecteer minstens één veld om te importeren.'); return; }
+
+  const naamAttr   = importMapped.naam    !== '— Niet koppelen —' ? importMapped.naam    : null;
+  const locAttr    = importMapped.locatie !== '— Niet koppelen —' ? importMapped.locatie : null;
+  const hoogteAttr = importMapped.hoogte  !== '— Niet koppelen —' ? importMapped.hoogte  : null;
+
+  let nieuw=0, skip=0, geenGras=0;
+  geselecteerd.forEach((f,i) => {
+    const attrs  = f.attributes || {};
+    const geom   = f.geometry   || {};
+    const geomType = f.geometryType || (geom.rings ? 'polygon' : geom.x ? 'point' : '');
+    const validatie = isGrasveld(attrs, geomType);
+
+    // Blokkeer import als het geen grasveld is (tenzij admin override)
+    if (!validatie.ok) { geenGras++; return; }
+
+    const naam   = naamAttr   ? (attrs[naamAttr]   || `Veld #${attrs.FID||i}`) : `Veld #${i+1}`;
+    const loc    = locAttr    ? (attrs[locAttr]    || '—') : '—';
+    const hoogte = hoogteAttr ? (parseInt(attrs[hoogteAttr]) || 80) : 80;
+
+    // Centroid: gebruik rings[0][0] als polygon, anders x/y
+    let lat, lng, rings = null;
+    if (geom.rings && geom.rings.length) {
+      rings = geom.rings;
+      // Bereken centroid van eerste ring
+      const ring = geom.rings[0];
+      lat = ring.reduce((s,p)=>s+p[1],0)/ring.length;
+      lng = ring.reduce((s,p)=>s+p[0],0)/ring.length;
+    } else {
+      lat = geom.y || geom.latitude  || 52.37;
+      lng = geom.x || geom.longitude || 4.90;
+    }
+
+    if (VELDEN.some(v=>v.naam===naam&&v.loc===loc)) { skip++; return; }
+
+    const nextId = VELDEN.length ? Math.max(...VELDEN.map(v=>v.id))+nieuw+1 : nieuw+1;
+    const status = hoogte>120?'Hoog':(hoogte<40?'Te laag':'OK');
+    const prio   = hoogte>120?'Hoog':(hoogte<70?'Middel':'Laag');
+    VELDEN.push({ id:nextId, naam, loc, lat, lng, hoogte, status, prio, machinist:'—', rings });
+    nieuw++;
+  });
+
+  // Ververs kaarten als ze al geladen zijn
+  if (mapInit.kaart)  refreshMap('arcgis-map', true);
+  if (mapInit.route)  refreshMap('arcgis-map-route', false);
+
+  // Update sidebar veldencount
+  document.querySelectorAll('.sb-badge').forEach(b => {
+    if (/^\d+$/.test(b.textContent)) b.textContent = VELDEN.length;
+  });
+
+  const resDiv = document.getElementById('import-result');
+  resDiv.style.display='block';
+  let msg = `✅ <strong>${nieuw} veld${nieuw!==1?'en':''} geïmporteerd</strong>`;
+  if (skip)    msg += ` &nbsp;|&nbsp; ${skip} overgeslagen (al actief)`;
+  if (geenGras) msg += ` &nbsp;|&nbsp; <span style="color:#c62828">${geenGras} geweigerd — geen grasveld herkend</span>`;
+  msg += `. <a href="#" onclick="showPage('velden');return false">Bekijk veldenlijst →</a>`;
+  resDiv.querySelector('.alert').innerHTML = msg;
+
+  toonVooruitblik();
 }
 
 /* ═══════════════════════════════════════
