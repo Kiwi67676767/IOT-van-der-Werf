@@ -709,18 +709,59 @@
               </div>
             </div>
             <div class="dc">
-              <div class="dch"><i class="bi bi-people-fill" style="color:var(--g)"></i><h6>Gebruikersbeheer</h6></div>
+              <div class="dch">
+                <i class="bi bi-people-fill" style="color:var(--g)"></i>
+                <h6>Gebruikersbeheer</h6>
+                <button class="btn btn-sm ms-auto" style="background:var(--g);color:#fff;font-size:.78rem" onclick="toggleNieuwGebruiker()">
+                  <i class="bi bi-person-plus-fill me-1"></i>Nieuw account
+                </button>
+              </div>
+              <div id="nieuw-gebruiker-form" class="dcb" style="display:none;border-bottom:1px solid #f0f0f0">
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem;font-weight:600">Volledige naam</label>
+                    <input id="nu-name" type="text" class="form-control form-control-sm" placeholder="bijv. Jan de Vries" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem;font-weight:600">Gebruikersnaam</label>
+                    <input id="nu-username" type="text" class="form-control form-control-sm" placeholder="bijv. jandevries" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem;font-weight:600">Wachtwoord</label>
+                    <input id="nu-password" type="password" class="form-control form-control-sm" placeholder="Minimaal 6 tekens" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem;font-weight:600">Rol</label>
+                    <select id="nu-role" class="form-select form-select-sm" onchange="toggleContractVeld()">
+                      <option value="machinist">Machinist</option>
+                      <option value="stakeholder">Stakeholder</option>
+                      <option value="admin">Beheerder</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3" id="nu-contract-wrap" style="display:none">
+                    <label class="form-label" style="font-size:.8rem;font-weight:600">Contractnaam</label>
+                    <input id="nu-contract" type="text" class="form-control form-control-sm" placeholder="bijv. Gemeente X" />
+                  </div>
+                  <div class="col-12">
+                    <div id="nu-error" style="font-size:.8rem;color:#dc3545;display:none"></div>
+                    <button class="btn btn-sm px-4 mt-1" style="background:var(--g);color:#fff;font-weight:600" onclick="maakGebruiker()">
+                      <i class="bi bi-check-lg me-1"></i>Account aanmaken
+                    </button>
+                  </div>
+                </div>
+              </div>
               <div class="dcb p-0">
                 <table class="table mb-0">
                   <thead style="background:var(--gp)">
-                    <tr><th class="ps-3" style="border:none">Gebruiker</th><th style="border:none">Rol</th><th style="border:none">Status</th></tr>
+                    <tr>
+                      <th class="ps-3" style="border:none">Gebruikersnaam</th>
+                      <th style="border:none">Naam</th>
+                      <th style="border:none">Rol</th>
+                      <th style="border:none"></th>
+                    </tr>
                   </thead>
-                  <tbody>
-                    <tr><td class="ps-3">admin</td><td><span class="badge" style="background:#e3f2fd;color:#1565c0">Beheerder</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
-                    <tr><td class="ps-3">machinist1</td><td><span class="badge" style="background:var(--gp);color:var(--g)">Machinist</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
-                    <tr><td class="ps-3">machinist2</td><td><span class="badge" style="background:var(--gp);color:var(--g)">Machinist</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
-                    <tr><td class="ps-3">stakeholder1</td><td><span class="badge" style="background:#f3e5f5;color:#6a1b9a">Stakeholder</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
-                    <tr><td class="ps-3">stakeholder2</td><td><span class="badge" style="background:#f3e5f5;color:#6a1b9a">Stakeholder</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
+                  <tbody id="users-tbody">
+                    <tr><td colspan="4" class="text-center py-3 text-muted">Laden…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -908,6 +949,7 @@ function showPage(page) {
   if(page==='team') renderTeam();
   if(page==='stakeholder') renderStakeholder();
   if(page==='metingen') laadMetingen();
+  if(page==='instellingen') laadGebruikers();
   if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
 }
 
@@ -1762,6 +1804,82 @@ function laadMetingen() {
       document.getElementById('meting-tbody').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Fout bij ophalen van metingen.</td></tr>';
       document.getElementById('meting-refresh-lbl').textContent = 'Fout bij laden';
     });
+}
+
+/* ═══════════════════════════════════════
+   GEBRUIKERSBEHEER
+═══════════════════════════════════════ */
+function laadGebruikers() {
+  fetch('/api/users')
+    .then(r => r.json())
+    .then(users => {
+      const rolKleur = {admin:'#e3f2fd;color:#1565c0', machinist:'var(--gp);color:var(--g)', stakeholder:'#f3e5f5;color:#6a1b9a'};
+      const rolNaam  = {admin:'Beheerder', machinist:'Machinist', stakeholder:'Stakeholder'};
+      document.getElementById('users-tbody').innerHTML = users.map(u => `
+        <tr>
+          <td class="ps-3 fw-semibold">${u.username}</td>
+          <td>${u.name}</td>
+          <td><span class="badge" style="background:${rolKleur[u.role]||'#eee;color:#333'}">${rolNaam[u.role]||u.role}</span></td>
+          <td class="pe-3 text-end">
+            ${u.username !== CU?.username ? `<button class="btn btn-sm btn-outline-danger" style="font-size:.72rem;padding:.2rem .6rem" onclick="verwijderGebruiker(${u.id},'${u.username}')"><i class="bi bi-trash"></i></button>` : ''}
+          </td>
+        </tr>`).join('');
+    })
+    .catch(() => {
+      document.getElementById('users-tbody').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Fout bij laden</td></tr>';
+    });
+}
+
+function toggleNieuwGebruiker() {
+  const f = document.getElementById('nieuw-gebruiker-form');
+  f.style.display = f.style.display === 'none' ? '' : 'none';
+}
+
+function toggleContractVeld() {
+  const rol = document.getElementById('nu-role').value;
+  document.getElementById('nu-contract-wrap').style.display = rol === 'stakeholder' ? '' : 'none';
+}
+
+function maakGebruiker() {
+  const name     = document.getElementById('nu-name').value.trim();
+  const username = document.getElementById('nu-username').value.trim();
+  const password = document.getElementById('nu-password').value;
+  const role     = document.getElementById('nu-role').value;
+  const contract = document.getElementById('nu-contract').value.trim();
+  const errEl    = document.getElementById('nu-error');
+  errEl.style.display = 'none';
+
+  if (!name || !username || !password) {
+    errEl.textContent = 'Vul alle verplichte velden in.'; errEl.style.display = 'block'; return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Wachtwoord moet minimaal 6 tekens zijn.'; errEl.style.display = 'block'; return;
+  }
+
+  fetch('/api/users', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, username, password, role, contract_name: contract || null})
+  })
+  .then(r => r.json().then(d => ({ok: r.ok, d})))
+  .then(({ok, d}) => {
+    if (ok) {
+      document.getElementById('nu-name').value = '';
+      document.getElementById('nu-username').value = '';
+      document.getElementById('nu-password').value = '';
+      document.getElementById('nieuw-gebruiker-form').style.display = 'none';
+      laadGebruikers();
+    } else {
+      errEl.textContent = d.error || 'Fout bij aanmaken.'; errEl.style.display = 'block';
+    }
+  });
+}
+
+function verwijderGebruiker(id, username) {
+  if (!confirm(`Account "${username}" verwijderen?`)) return;
+  fetch(`/api/users/${id}`, {method: 'DELETE'})
+    .then(r => r.json())
+    .then(d => { if (d.status === 'ok') laadGebruikers(); else alert(d.error); });
 }
 
 /* ═══════════════════════════════════════

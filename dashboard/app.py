@@ -132,6 +132,61 @@ def me():
     return jsonify(user.to_dict())
 
 
+# ── GEBRUIKERS BEHEER ──
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    if session.get('user_id') is None:
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    users = User.query.order_by(User.id).all()
+    return jsonify([{
+        'id': u.id, 'username': u.username,
+        'name': u.name, 'role': u.role, 'label': u.label
+    } for u in users])
+
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    me = User.query.get(session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    data = request.get_json()
+    username = (data.get('username') or '').strip().lower()
+    password = data.get('password') or ''
+    role     = data.get('role') or 'machinist'
+    name     = data.get('name') or username
+    if not username or not password:
+        return jsonify({'error': 'Gebruikersnaam en wachtwoord zijn verplicht'}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Gebruikersnaam bestaat al'}), 400
+    initials = ''.join(w[0].upper() for w in name.split()[:2])
+    label = {'admin': 'Beheerder', 'machinist': 'Machinist', 'stakeholder': 'Stakeholder'}.get(role, role)
+    user = User(
+        username=username,
+        password_hash=generate_password_hash(password),
+        name=name, role=role, initials=initials, label=label,
+        contract_name=data.get('contract_name')
+    )
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({'status': 'ok', 'id': user.id}), 201
+
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    me = User.query.get(session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    if me.id == user_id:
+        return jsonify({'error': 'Je kan jezelf niet verwijderen'}), 400
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Gebruiker niet gevonden'}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
 # ── SENSOR ROUTE ──
 
 @app.route('/data', methods=['POST'])
