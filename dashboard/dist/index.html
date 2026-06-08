@@ -597,6 +597,41 @@
 
       </div>
 
+      <!-- ══ SENSOR METINGEN ══ -->
+      <div id="page-metingen" class="page">
+        <div class="row g-3 mb-3" id="meting-stats"></div>
+        <div class="dc">
+          <div class="dch">
+            <i class="bi bi-broadcast" style="color:var(--g)"></i>
+            <h6>Alle sensormetingen</h6>
+            <span id="meting-count" class="ms-2 badge" style="background:var(--gp);color:var(--g);font-size:.72rem"></span>
+            <div class="ms-auto d-flex gap-2 align-items-center">
+              <span id="meting-refresh-lbl" style="font-size:.75rem;color:#adb5bd"></span>
+              <button class="btn btn-sm" style="background:var(--g);color:#fff;font-size:.78rem" onclick="laadMetingen()">
+                <i class="bi bi-arrow-clockwise"></i> Vernieuwen
+              </button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:var(--gp)">
+                <tr>
+                  <th class="ps-3" style="border:none">#</th>
+                  <th style="border:none">Device</th>
+                  <th style="border:none">Grashoogte</th>
+                  <th style="border:none">Status</th>
+                  <th style="border:none">Locatie</th>
+                  <th style="border:none">Tijdstip</th>
+                </tr>
+              </thead>
+              <tbody id="meting-tbody">
+                <tr><td colspan="6" class="text-center py-4 text-muted">Laden…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ TEAM ══ -->
       <div id="page-team" class="page">
         <div class="row g-3">
@@ -742,6 +777,7 @@ const NAV = {
     { page:'velden',    icon:'list-check',    label:'Velden',   badge:'15' },
     { sec:'Beheer' },
     { page:'import',      icon:'cloud-arrow-down-fill', label:'Velden importeren', badge:'ArcGIS' },
+    { page:'metingen',    icon:'broadcast',             label:'Sensor Metingen',   badge:'Live' },
     { page:'team',        icon:'people-fill',   label:'Team' },
     { page:'instellingen',icon:'gear-fill',     label:'Instellingen' },
   ],
@@ -829,7 +865,7 @@ function showPage(page) {
   const btn=document.querySelector(`.sb-link[onclick="showPage('${page}')"]`);
   if(btn) btn.classList.add('active');
 
-  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',import:'Velden importeren',team:'Team',instellingen:'Instellingen'};
+  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',import:'Velden importeren',metingen:'Sensor Metingen',team:'Team',instellingen:'Instellingen'};
   document.getElementById('pg-title').textContent=titles[page]||page;
   document.getElementById('pg-crumb').textContent=titles[page]||page;
 
@@ -838,6 +874,7 @@ function showPage(page) {
   if(page==='velden') renderVelden(VELDEN);
   if(page==='team') renderTeam();
   if(page==='stakeholder') renderStakeholder();
+  if(page==='metingen') laadMetingen();
   if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
 }
 
@@ -1511,6 +1548,57 @@ function importeerGeselecteerde() {
   resDiv.querySelector('.alert').innerHTML = msg;
 
   toonVooruitblik();
+}
+
+/* ═══════════════════════════════════════
+   SENSOR METINGEN
+═══════════════════════════════════════ */
+function laadMetingen() {
+  document.getElementById('meting-refresh-lbl').textContent = 'Laden…';
+  fetch('/api/metingen')
+    .then(r => r.json())
+    .then(data => {
+      const tbody = document.getElementById('meting-tbody');
+      const count = document.getElementById('meting-count');
+      count.textContent = data.length + ' metingen';
+
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nog geen metingen ontvangen van de sensor.</td></tr>';
+        return;
+      }
+
+      // Stat cards bovenaan
+      const gem = Math.round(data.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / data.length);
+      const hoogCount = data.filter(m => m.gras_hoogte_cm > 12).length;
+      document.getElementById('meting-stats').innerHTML = `
+        <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal metingen</div><div class="val">${data.length}</div><div class="sub">opgeslagen</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gem. hoogte</div><div class="val">${gem}<span style="font-size:.95rem">cm</span></div><div class="sub">gemiddeld</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoogCount}</div><div class="sub">&gt;12cm</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="sc pu"><div class="ic"><i class="bi bi-cpu"></i></div><div><div class="lbl">Laatste device</div><div class="val" style="font-size:1rem">${data[0].device_id||'—'}</div><div class="sub">meest recent</div></div></div></div>`;
+
+      tbody.innerHTML = data.map((m, i) => {
+        const h = m.gras_hoogte_cm;
+        const status = h > 12 ? '<span class="bs bsh">Te hoog</span>' : (h < 4 ? '<span class="bs bsl">Te laag</span>' : '<span class="bs bsok">OK</span>');
+        const kleur = h > 12 ? '#f44336' : (h < 4 ? '#ff9800' : '#2e7d32');
+        const tijd = m.timestamp ? new Date(m.timestamp + 'Z').toLocaleString('nl-NL') : '—';
+        const lat = m.latitude ? m.latitude.toFixed(4) + '°N' : '—';
+        const lon = m.longitude ? m.longitude.toFixed(4) + '°O' : '—';
+        return `<tr>
+          <td class="ps-3 text-muted" style="font-size:.78rem">${data.length - i}</td>
+          <td><span class="badge" style="background:var(--gp);color:var(--g)">${m.device_id||'—'}</span></td>
+          <td><strong style="color:${kleur}">${h}</strong> cm</td>
+          <td>${status}</td>
+          <td style="font-size:.78rem;color:#adb5bd">${lat}, ${lon}</td>
+          <td style="font-size:.78rem">${tijd}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('meting-refresh-lbl').textContent = 'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
+    })
+    .catch(() => {
+      document.getElementById('meting-tbody').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Fout bij ophalen van metingen.</td></tr>';
+      document.getElementById('meting-refresh-lbl').textContent = 'Fout bij laden';
+    });
 }
 
 /* ═══════════════════════════════════════
