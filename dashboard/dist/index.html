@@ -1715,8 +1715,8 @@ function laadMetingen() {
         const status = h > 12 ? '<span class="bs bsh">Te hoog</span>' : (h < 4 ? '<span class="bs bsl">Te laag</span>' : '<span class="bs bsok">OK</span>');
         const kleur = h > 12 ? '#f44336' : (h < 4 ? '#ff9800' : '#2e7d32');
         const tijd = m.timestamp ? new Date(m.timestamp + 'Z').toLocaleString('nl-NL') : '—';
-        const lat = m.latitude ? m.latitude.toFixed(4) + '°N' : '—';
-        const lon = m.longitude ? m.longitude.toFixed(4) + '°O' : '—';
+        const lat = m.latitude != null ? m.latitude.toFixed(4) + '°N' : 'geen data beschikbaar';
+        const lon = m.longitude != null ? m.longitude.toFixed(4) + '°O' : '';
         return `<tr>
           <td class="ps-3 text-muted" style="font-size:.78rem">${data.length - i}</td>
           <td><span class="badge" style="background:var(--gp);color:var(--g)">${m.device_id||'—'}</span></td>

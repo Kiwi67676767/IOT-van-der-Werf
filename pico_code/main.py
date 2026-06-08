@@ -51,23 +51,22 @@ while True:
 
     print(f"Afstand: {afstand} cm | GPS: {lat}, {lon}")
 
-    if lat != 0:
-        try:
-            response = urequests.post(
-                SERVER_URL,
-                json={
-                    "device_id": DEVICE_ID,
-                    "gras_hoogte_cm": afstand,
-                    "latitude": lat,
-                    "longitude": lon
-                },
-                headers={"Content-Type": "application/json"}
-            )
-            print("Server:", response.text)
-            response.close()
-        except Exception as e:
-            print("Fout bij versturen:", e)
-    else:
-        print("Geen GPS fix, meting niet verstuurd.")
+    payload = {
+        "device_id": DEVICE_ID,
+        "gras_hoogte_cm": afstand,
+        "latitude": lat if lat != 0 else None,
+        "longitude": lon if lon != 0 else None
+    }
+
+    try:
+        response = urequests.post(
+            SERVER_URL,
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        print("Server:", response.text)
+        response.close()
+    except Exception as e:
+        print("Fout bij versturen:", e)
 
     time.sleep(60)
