@@ -1,1065 +1,961 @@
 <!doctype html>
-<html lang="en">
-  <!--begin::Head-->
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Van der Werf | Dashboard</title>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Van der Werf | Dashboard</title>
 
-    <!--begin::Accessibility Meta Tags-->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#007bff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
-    <!--end::Accessibility Meta Tags-->
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
+  <!-- ArcGIS Maps SDK -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <!-- ApexCharts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.css" crossorigin="anonymous" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-    <!--begin::Primary Meta Tags-->
-    <meta name="title" content="Van der Werf | Dashboard" />
-    <meta name="author" content="Van der Werf" />
-    <meta name="description" content="Van der Werf IoT Dashboard" />
-    <!--end::Primary Meta Tags-->
+  <style>
+    :root {
+      --vdw-green:        #2e7d32;
+      --vdw-green-dark:   #1b5e20;
+      --vdw-green-mid:    #388e3c;
+      --vdw-green-light:  #4caf50;
+      --vdw-green-pale:   #e8f5e9;
+      --vdw-accent:       #66bb6a;
+      --sidebar-w:        260px;
+    }
 
-    <!--begin::Accessibility Features-->
-    <!-- Skip links will be dynamically added by accessibility.js -->
-    <meta name="supported-color-schemes" content="light dark" />
-    <link rel="preload" href="./css/adminlte.css" as="style" />
-    <!--end::Accessibility Features-->
+    * { box-sizing: border-box; }
 
-    <!--begin::Fonts-->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css"
-      integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q="
-      crossorigin="anonymous"
-      media="print"
-      onload="this.media = 'all'"
-    />
-    <!--end::Fonts-->
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f6f4;
+      margin: 0;
+      overflow-x: hidden;
+    }
 
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css"
-      crossorigin="anonymous"
-    />
-    <!--end::Third Party Plugin(OverlayScrollbars)-->
+    /* ───── LOGIN ───── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, var(--vdw-green-dark) 0%, var(--vdw-green) 50%, var(--vdw-green-light) 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2.5rem 2.2rem;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .login-logo {
+      width: 64px; height: 64px;
+      background: var(--vdw-green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+      color: #fff; font-size: 1.8rem;
+    }
+    .login-card h2 { color: var(--vdw-green-dark); text-align: center; font-weight: 700; margin-bottom: .25rem; }
+    .login-card p.sub { color: #6c757d; text-align: center; font-size: .85rem; margin-bottom: 1.5rem; }
+    .login-card .form-control:focus { border-color: var(--vdw-green); box-shadow: 0 0 0 .2rem rgba(46,125,50,.2); }
+    .btn-login {
+      background: var(--vdw-green); color: #fff; border: none;
+      width: 100%; padding: .75rem; border-radius: 8px; font-weight: 600; font-size: 1rem;
+      transition: background .2s;
+    }
+    .btn-login:hover { background: var(--vdw-green-dark); color: #fff; }
+    .login-error { color: #dc3545; font-size: .85rem; text-align: center; margin-top: .75rem; display: none; }
+    .login-hint { color: #adb5bd; font-size: .78rem; text-align: center; margin-top: 1rem; }
 
-    <!--begin::Third Party Plugin(Bootstrap Icons)-->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
-      crossorigin="anonymous"
-    />
-    <!--end::Third Party Plugin(Bootstrap Icons)-->
+    /* ───── SIDEBAR ───── */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: linear-gradient(180deg, var(--vdw-green-dark) 0%, var(--vdw-green) 100%);
+      z-index: 100;
+      display: flex; flex-direction: column;
+      box-shadow: 4px 0 16px rgba(0,0,0,.15);
+      transition: transform .3s;
+    }
+    .sidebar-brand {
+      padding: 1.4rem 1.2rem;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .sidebar-brand-icon {
+      width: 40px; height: 40px; background: rgba(255,255,255,.15);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 1.1rem; flex-shrink: 0;
+    }
+    .sidebar-brand-text { color: #fff; font-weight: 700; font-size: .95rem; line-height: 1.2; }
+    .sidebar-brand-text small { font-weight: 300; font-size: .75rem; opacity: .8; display: block; }
 
-    <!--begin::Required Plugin(AdminLTE)-->
-    <link rel="stylesheet" href="./css/adminlte.css" />
-    <!--end::Required Plugin(AdminLTE)-->
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0; }
+    .sidebar-section-title {
+      color: rgba(255,255,255,.5); font-size: .68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .08em;
+      padding: .5rem 1.2rem .25rem; margin-top: .5rem;
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .65rem 1.2rem;
+      color: rgba(255,255,255,.8); text-decoration: none;
+      font-size: .88rem; font-weight: 500;
+      border-radius: 0; cursor: pointer;
+      transition: background .15s, color .15s;
+      border: none; background: transparent; width: 100%; text-align: left;
+    }
+    .sidebar-link i { font-size: 1rem; width: 20px; flex-shrink: 0; }
+    .sidebar-link:hover, .sidebar-link.active {
+      background: rgba(255,255,255,.15); color: #fff;
+    }
+    .sidebar-link.active { border-left: 3px solid var(--vdw-accent); padding-left: calc(1.2rem - 3px); }
+    .sidebar-badge {
+      margin-left: auto; background: rgba(255,255,255,.2);
+      color: #fff; font-size: .7rem; padding: .15rem .5rem;
+      border-radius: 20px; font-weight: 600;
+    }
 
-    <!-- apexcharts -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.css"
-      integrity="sha256-4MX+61mt9NVvvuPjUWdUdyfZfxSB1/Rf9WtqRHgG5S0="
-      crossorigin="anonymous"
-    />
-  </head>
+    .sidebar-user {
+      padding: 1rem 1.2rem;
+      border-top: 1px solid rgba(255,255,255,.1);
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .sidebar-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: .85rem; font-weight: 600; flex-shrink: 0;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-info .name { color: #fff; font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-info .role { color: rgba(255,255,255,.6); font-size: .72rem; }
+    .btn-logout { color: rgba(255,255,255,.7); border: none; background: transparent; cursor: pointer; font-size: 1rem; padding: .2rem; }
+    .btn-logout:hover { color: #fff; }
 
-  <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
-    <!--begin::App Wrapper-->
-    <div class="app-wrapper">
-      <!--begin::Header-->
-      <nav class="app-header navbar navbar-expand bg-body">
-        <!--begin::Container-->
-        <div class="container-fluid">
-          <!--begin::Start Navbar Links-->
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button">
-                <i class="bi bi-list"></i>
-              </a>
-            </li>
+    /* ───── MAIN LAYOUT ───── */
+    #app { display: none; min-height: 100vh; }
+    #main-content { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
 
-            <li class="nav-item d-none d-md-block">
-              <a href="./index.html" class="nav-link">
-                <i class="bi bi-grid-1x2 me-1" aria-hidden="true"></i>
-                
-              </a>
-            </li>
-          </ul>
-          <!--end::Start Navbar Links-->
+    /* ───── TOPBAR ───── */
+    #topbar {
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+      padding: .75rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    #topbar h4 { margin: 0; font-weight: 700; color: var(--vdw-green-dark); flex: 1; }
+    .topbar-breadcrumb { font-size: .8rem; color: #adb5bd; }
+    .topbar-breadcrumb span { color: var(--vdw-green); font-weight: 500; }
 
-          <!--begin::End Navbar Links-->
-          <ul class="navbar-nav ms-auto">
-            <!--begin::Navbar Search-->
-            <li class="nav-item">
-              <a class="nav-link" data-widget="navbar-search" href="#" role="button">
-                <i class="bi bi-search"></i>
-              </a>
-            </li>
-            <!--end::Navbar Search-->
+    /* ───── CONTENT ───── */
+    .content-area { padding: 1.5rem; flex: 1; }
 
-            <!--begin::Messages Dropdown Menu-->
-            <li class="nav-item dropdown">
-              <a class="nav-link" data-bs-toggle="dropdown" href="#">
-                <i class="bi bi-chat-text"></i>
-                <span class="navbar-badge badge text-bg-danger">3</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-                <a href="#" class="dropdown-item">
-                  <!--begin::Message-->
-                  <div class="d-flex">
-                    <div class="flex-shrink-0">
-                      <img
-                        src="./assets/img/user1-128x128.jpg"
-                        alt="User Avatar"
-                        class="img-size-50 rounded-circle me-3"
-                      />
-                    </div>
-                    <div class="flex-grow-1">
-                      <h3 class="dropdown-item-title">
-                        Brad Diesel
-                        <span class="float-end fs-7 text-danger"
-                          ><i class="bi bi-star-fill"></i
-                        ></span>
-                      </h3>
-                      <p class="fs-7">Call me whenever you can...</p>
-                      <p class="fs-7 text-secondary">
-                        <i class="bi bi-clock-fill me-1"></i> 4 Hours Ago
-                      </p>
-                    </div>
-                  </div>
-                  <!--end::Message-->
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                  <!--begin::Message-->
-                  <div class="d-flex">
-                    <div class="flex-shrink-0">
-                      <img
-                        src="./assets/img/user8-128x128.jpg"
-                        alt="User Avatar"
-                        class="img-size-50 rounded-circle me-3"
-                      />
-                    </div>
-                    <div class="flex-grow-1">
-                      <h3 class="dropdown-item-title">
-                        John Pierce
-                        <span class="float-end fs-7 text-secondary">
-                          <i class="bi bi-star-fill"></i>
-                        </span>
-                      </h3>
-                      <p class="fs-7">I got your message bro</p>
-                      <p class="fs-7 text-secondary">
-                        <i class="bi bi-clock-fill me-1"></i> 4 Hours Ago
-                      </p>
-                    </div>
-                  </div>
-                  <!--end::Message-->
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                  <!--begin::Message-->
-                  <div class="d-flex">
-                    <div class="flex-shrink-0">
-                      <img
-                        src="./assets/img/user3-128x128.jpg"
-                        alt="User Avatar"
-                        class="img-size-50 rounded-circle me-3"
-                      />
-                    </div>
-                    <div class="flex-grow-1">
-                      <h3 class="dropdown-item-title">
-                        Nora Silvester
-                        <span class="float-end fs-7 text-warning">
-                          <i class="bi bi-star-fill"></i>
-                        </span>
-                      </h3>
-                      <p class="fs-7">The subject goes here</p>
-                      <p class="fs-7 text-secondary">
-                        <i class="bi bi-clock-fill me-1"></i> 4 Hours Ago
-                      </p>
-                    </div>
-                  </div>
-                  <!--end::Message-->
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item dropdown-footer">See All Messages</a>
-              </div>
-            </li>
-            <!--end::Messages Dropdown Menu-->
+    /* ───── STAT CARDS ───── */
+    .stat-card {
+      background: #fff; border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      border-left: 4px solid var(--vdw-green);
+      transition: box-shadow .2s;
+    }
+    .stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+    .stat-card .label { font-size: .78rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--vdw-green-dark); line-height: 1; margin: .3rem 0; }
+    .stat-card .sub { font-size: .78rem; color: #6c757d; }
+    .stat-card .icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+    .stat-card.green  { border-left-color: var(--vdw-green);   } .stat-card.green  .icon { background: var(--vdw-green-pale); color: var(--vdw-green); }
+    .stat-card.orange { border-left-color: #ff9800; } .stat-card.orange .icon { background: #fff3e0; color: #ff9800; }
+    .stat-card.red    { border-left-color: #f44336; } .stat-card.red    .icon { background: #ffebee; color: #f44336; }
+    .stat-card.blue   { border-left-color: #2196f3; } .stat-card.blue   .icon { background: #e3f2fd; color: #2196f3; }
 
-            <!--begin::Notifications Dropdown Menu-->
-            <li class="nav-item dropdown">
-              <a class="nav-link" data-bs-toggle="dropdown" href="#">
-                <i class="bi bi-bell-fill"></i>
-                <span class="navbar-badge badge text-bg-warning">15</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-                <span class="dropdown-item dropdown-header">15 Notifications</span>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                  <i class="bi bi-envelope me-2"></i> 4 new messages
-                  <span class="float-end text-secondary fs-7">3 mins</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                  <i class="bi bi-people-fill me-2"></i> 8 friend requests
-                  <span class="float-end text-secondary fs-7">12 hours</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                  <i class="bi bi-file-earmark-fill me-2"></i> 3 new reports
-                  <span class="float-end text-secondary fs-7">2 days</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item dropdown-footer"> See All Notifications </a>
-              </div>
-            </li>
-            <!--end::Notifications Dropdown Menu-->
+    /* ───── CARDS ───── */
+    .dash-card {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      margin-bottom: 1.25rem;
+    }
+    .dash-card-header {
+      padding: 1rem 1.2rem .75rem;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .dash-card-header h6 { margin: 0; font-weight: 700; color: #1a1a2e; font-size: .9rem; flex: 1; }
+    .dash-card-body { padding: 1.2rem; }
 
-            <!--begin::Fullscreen Toggle-->
-            <li class="nav-item">
-              <a class="nav-link" href="#" data-lte-toggle="fullscreen">
-                <i data-lte-icon="maximize" class="bi bi-arrows-fullscreen"></i>
-                <i data-lte-icon="minimize" class="bi bi-fullscreen-exit d-none"></i>
-              </a>
-            </li>
-            <!--end::Fullscreen Toggle-->
+    /* ───── FIELDS LIST ───── */
+    .field-item {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .75rem 0; border-bottom: 1px solid #f5f5f5;
+    }
+    .field-item:last-child { border-bottom: none; }
+    .field-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--vdw-green-pale); color: var(--vdw-green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .field-info { flex: 1; min-width: 0; }
+    .field-name { font-weight: 600; font-size: .88rem; color: #1a1a2e; }
+    .field-coord { font-size: .75rem; color: #adb5bd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-            <!--begin::Color Mode Toggle (#6010)-->
-            <li class="nav-item dropdown">
-              <a
-                class="nav-link"
-                href="#"
-                id="bd-theme"
-                aria-label="Toggle color scheme"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                <i class="bi bi-sun-fill" data-lte-theme-icon="light"></i>
-                <i class="bi bi-moon-fill d-none" data-lte-theme-icon="dark"></i>
-                <i class="bi bi-circle-half d-none" data-lte-theme-icon="auto"></i>
-              </a>
-              <ul
-                class="dropdown-menu dropdown-menu-end"
-                aria-labelledby="bd-theme"
-                style="--bs-dropdown-min-width: 8rem"
-              >
-                <li>
-                  <button
-                    type="button"
-                    class="dropdown-item d-flex align-items-center"
-                    data-bs-theme-value="light"
-                    aria-pressed="false"
-                  >
-                    <i class="bi bi-sun-fill me-2"></i>
-                    Light
-                    <i class="bi bi-check-lg ms-auto d-none"></i>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    class="dropdown-item d-flex align-items-center"
-                    data-bs-theme-value="dark"
-                    aria-pressed="false"
-                  >
-                    <i class="bi bi-moon-fill me-2"></i>
-                    Dark
-                    <i class="bi bi-check-lg ms-auto d-none"></i>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    class="dropdown-item d-flex align-items-center active"
-                    data-bs-theme-value="auto"
-                    aria-pressed="true"
-                  >
-                    <i class="bi bi-circle-half me-2"></i>
-                    Auto
-                    <i class="bi bi-check-lg ms-auto d-none"></i>
-                  </button>
-                </li>
-              </ul>
-            </li>
-            <!--end::Color Mode Toggle-->
+    /* ───── PROGRESS ───── */
+    .prog-group { margin-bottom: 1rem; }
+    .prog-label { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: .3rem; color: #495057; font-weight: 500; }
+    .progress { height: 8px; border-radius: 4px; background: #f0f0f0; }
 
-            <!--begin::User Menu Dropdown-->
-            <li class="nav-item dropdown user-menu">
-              <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                <img
-                  src="./assets/img/user2-160x160.jpg"
-                  class="user-image rounded-circle shadow"
-                  alt="User Image"
-                />
-                <span class="d-none d-md-inline">Machinist 1</span>
-              </a>
-              <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-                <!--begin::User Image-->
-                <li class="user-header text-bg-primary">
-                  <img
-                    src=""
-                    class="rounded-circle shadow"
-                    alt="User Image"
-                  />
-                  <p>
-                    
-                    <small>Member since 04/06/2026</small>
-                  </p>
-                </li>
-                <!--end::User Image-->
-                <!--begin::Menu Body-->
-                <li class="user-body">
-                  <!--begin::Row-->
-                  <div class="row">
-                    <div class="col-4 text-center">
-                      <a href="#">Followers</a>
-                    </div>
-                    <div class="col-4 text-center">
-                      <a href="#">Sal</a>
-                    </div>
-                    <div class="col-4 text-center">
-                      <a href="#">Friends</a>
-                    </div>
-                  </div>
-                  <!--end::Row-->
-                </li>
-                <!--end::Menu Body-->
-                <!--begin::Menu Footer-->
-                <li class="user-footer">
-                  <a href="#" class="btn btn-outline-secondary">Profile</a>
-                  <a href="#" class="btn btn-outline-danger float-end">Sign out</a>
-                </li>
-                <!--end::Menu Footer-->
-              </ul>
-            </li>
-            <!--end::User Menu Dropdown-->
-          </ul>
-          <!--end::End Navbar Links-->
+    /* ───── MAP ───── */
+    #arcgis-map { height: 400px; border-radius: 0 0 12px 12px; overflow: hidden; }
+
+    /* ───── LEGEND ───── */
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+    /* ───── PAGE SECTIONS ───── */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* ───── BADGE STATUS ───── */
+    .badge-status { font-size: .72rem; font-weight: 600; padding: .3em .7em; border-radius: 20px; }
+    .badge-hoog   { background: #ffebee; color: #c62828; }
+    .badge-laag   { background: #fff3e0; color: #e65100; }
+    .badge-ok     { background: #e8f5e9; color: #2e7d32; }
+    .badge-bezig  { background: #e3f2fd; color: #1565c0; }
+
+    /* ───── MOBILE ───── */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #main-content { margin-left: 0; }
+      .sidebar-toggle-btn { display: flex !important; }
+    }
+    .sidebar-toggle-btn { display: none; }
+
+    /* ───── CHART CONTAINER ───── */
+    #sales-chart, #pie-chart { min-height: 220px; }
+
+    /* ───── SCROLLBAR ───── */
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     LOGIN SCHERM
+═══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo"><i class="bi bi-flower2"></i></div>
+    <h2>Van der Werf</h2>
+    <p class="sub">Groenvoorzieningen &mdash; Dashboard</p>
+
+    <form id="login-form" onsubmit="doLogin(event)">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem">Gebruikersnaam</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person"></i></span>
+          <input id="inp-user" type="text" class="form-control" placeholder="bijv. machinist1" autocomplete="username" />
         </div>
-        <!--end::Container-->
-      </nav>
-      <!--end::Header-->
-      <!--begin::Sidebar-->
-      <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
-        <!--begin::Sidebar Brand-->
-        <div class="sidebar-brand">
-          <!--begin::Brand Link-->
-          <a href="./index.html" class="brand-link">
-            <!--begin::Brand Image-->
-            <img
-              src="./assets/img/AdminLTELogo.png"
-              alt="AdminLTE Logo"
-              class="brand-image opacity-75 shadow"
-            />
-            <!--end::Brand Image-->
-            <!--begin::Brand Text-->
-            <span class="brand-text fw-light"></span>
-            <!--end::Brand Text-->
-          </a>
-          <!--end::Brand Link-->
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem">Wachtwoord</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input id="inp-pass" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password" />
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePass()"><i class="bi bi-eye" id="eye-icon"></i></button>
         </div>
-        <!--end::Sidebar Brand-->
-        <!--begin::Sidebar Wrapper-->
-        <div class="sidebar-wrapper">
-          <nav class="mt-2" aria-label="Main navigation">
-            <!--begin::Sidebar Menu-->
-           
-                    
-              
-             
-         
-                    
-       
-            
-              
-            
-                    
-          
+      </div>
+      <button class="btn-login" type="submit">Inloggen</button>
+      <div class="login-error" id="login-error">Verkeerde gebruikersnaam of wachtwoord</div>
+    </form>
+    <p class="login-hint">Demo: <strong>machinist1</strong> / <strong>groen123</strong></p>
+  </div>
+</div>
 
-                 
-                   
+<!-- ═══════════════════════════════════════════════
+     APP WRAPPER
+═══════════════════════════════════════════════ -->
+<div id="app">
 
-              
-                  
-              
-            
-            <!--end::Sidebar Menu-->
-          </nav>
-        </div>
-        <!--end::Sidebar Wrapper-->
-      </aside>
-      <!--end::Sidebar-->
-      <!--begin::App Main-->
-      <main class="app-main">
-        <!--begin::App Content Header-->
-        <div class="app-content-header">
-          <!--begin::Container-->
-          <div class="container-fluid">
-            <!--begin::Row-->
-            <div class="row">
-              <div class="col-sm-6">
-                <h3 class="mb-0">Welkom terug, Machinist 1</h3>
-              </div>
-              <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-end">
-                  <li class="breadcrumb-item"><a href="#">Home</a></li>
-                  <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
-                </ol>
-              </div>
-            </div>
-            <!--end::Row-->
-          </div>
-          <!--end::Container-->
-        </div>
- 
-            <!--begin::Row-->
-            <div class="row">
-              <div class="col-md-12">
-                <div class="card mb-4">
-                  <div class="card-header">
-                    <h5 class="card-title"></h5>
-Overzicht
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
-                        <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                        <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                      </button>
-                      <div class="btn-group">
-                        <button
-                          type="button"
-                          class="btn btn-tool dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                        >
-                          <i class="bi bi-wrench"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-end" role="menu">
-                          <a href="#" class="dropdown-item">Action</a>
-                          <a href="#" class="dropdown-item">Another action</a>
-                          <a href="#" class="dropdown-item"> Something else here </a>
-                          <a class="dropdown-divider"></a>
-                          <a href="#" class="dropdown-item">Separated link</a>
-                        </div>
-                      </div>
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-remove">
-                        <i class="bi bi-x-lg"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <!-- /.card-header -->
-                  <div class="card-body">
-                    <!--begin::Row-->
-                    <div class="row">
-                      <div class="col-md-8">
-                        <p class="text-center">
-                          <strong>Grashoogte in mm</strong>
-                        </p>
-
-                        <div id="sales-chart"></div>
-                      </div>
-                      <!-- /.col -->
-                      <div class="col-md-4">
-                        <p class="text-center">
-                          <strong>Doelstellingen</strong>
-                        </p>
-
-                        <div class="progress-group">
-                          Gemaaide velden
-                          <span class="float-end"><b>-</b>/-</span>
-                          <div class="progress progress-sm">
-                            <div class="progress-bar text-bg-primary" style="width: 80%"></div>
-                          </div>
-                        </div>
-                        <!-- /.progress-group -->
-
-                        <div class="progress-group">
-                          Gras te hoog
-                          <span class="float-end"><b>-</b>/-</span>
-                          <div class="progress progress-sm">
-                            <div class="progress-bar text-bg-danger" style="width: 75%"></div>
-                          </div>
-                        </div>
-
-                        <!-- /.progress-group -->
-                        <div class="progress-group">
-                          <span class="progress-text">Gras op gewenste hoogte</span>
-                          <span class="float-end"><b>-</b>/-</span>
-                          <div class="progress progress-sm">
-                            <div class="progress-bar text-bg-success" style="width: 60%"></div>
-                          </div>
-                        </div>
-
-                        <!-- /.progress-group -->
-                        <div class="progress-group">
-                          Gras te laag
-                          <span class="float-end"><b>-</b>/-</span>
-                          <div class="progress progress-sm">
-                            <div class="progress-bar text-bg-warning" style="width: 50%"></div>
-                          </div>
-                        </div>
-                        <!-- /.progress-group -->
-                      </div>
-                      <!-- /.col -->
-                    </div>
-                    <!--end::Row-->
-                  </div>
-                  <!-- ./card-body -->
-                  <div class="card-footer">
-                    <!--begin::Row-->
-                    
-                      
-
-                     
-                    <!--end::Row-->
-                  </div>
-                  <!-- /.card-footer -->
-                </div>
-                <!-- /.card -->
-              </div>
-              <!-- /.col -->
-            </div>
-            <!--end::Row-->
-
-            <!--begin::Row-->
-            <div class="row">
-              <!-- Start col -->
-              <div class="col-md-8">
-                <!--begin::Row-->
-                <div class="row g-4 mb-4">
-                  <div class="col-md-6">
-                    <!-- DIRECT CHAT -->
-                    
-                        
-
-                                <div class="contacts-list-info">
-                                  <span class="contacts-list-name">
-                                    Sarah Doe
-                                    <small class="contacts-list-date float-end"> 2/23/2023 </small>
-                                  </span>
-                                  <span class="contacts-list-msg"> I will be waiting for... </span>
-                                </div>
-                                <!-- /.contacts-list-info -->
-                              </a>
-                            </li>
-                            <!-- End Contact Item -->
-                            <li>
-             
-
-                            
-                  <!-- /.col -->
-
-                  <div class="col-md-6">
-                    <!-- USERS LIST -->
-                    <div class="card">
-                      <div class="card-header">
-                        <h3 class="card-title">Teamleden</h3>
-
-                        <div class="card-tools">
-                          <span class="badge text-bg-danger"> 1 Nieuwe leden </span>
-                          <button
-                            type="button"
-                            class="btn btn-tool"
-                            data-lte-toggle="card-collapse"
-                          >
-                            <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                            <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                          </button>
-                          <button type="button" class="btn btn-tool" data-lte-toggle="card-remove">
-                            <i class="bi bi-x-lg"></i>
-                          </button>
-                        </div>
-                      </div>
-                      <!-- /.card-header -->
-                      <div class="card-body p-0">
-                        <div class="row text-center m-1">
-                          <div class="col-3 p-2">
-                            <img
-                              class="img-fluid rounded-circle"
-                              src="./assets/img/user1-128x128.jpg"
-                              alt="User Image"
-                            />
-                            <a
-                              class="btn fw-bold fs-7 text-secondary text-truncate w-100 p-0"
-                              href="#"
-                            >
-                              Machinist 1
-                            </a>
-                            <div class="fs-8">Vandaag</div>
-                          </div>
-                          <
-                        >
-                      </div>
-                      <!-- /.card-footer -->
-                    </div>
-                    <!-- /.card -->
-                  </div>
-                  <!-- /.col -->
-                </div>
-                <!--end::Row-->
-                </div>
-
-                <!--begin::Latest Order Widget-->
-      
-                  <!-- /.card-body -->
-                  <div class="card-footer clearfix">
-                    <a href="javascript:void(0)" class="btn btn-sm btn-primary float-start">
-                      Verfris overzicht
-                    </a>
-                    <a href="javascript:void(0)" class="btn btn-sm btn-secondary float-end">
-                      Zie alle velden
-                    </a>
-                  </div>
-                  <!-- /.card-footer -->
-                </div>
-                <!-- /.card -->
-              </div>
-              <!-- /.col -->
-
-              <div class="col-md-4">
-                <!-- Info Boxes Style 2 -->
-                
-                  </div>
-                  <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
- 
-                  
-                  <!-- /.info-box-content -->
-                </div>
-                <!-- /.info-box -->
-
-                <div class="card mb-4">
-                  <div class="card-header">
-                    <h3 class="card-title">Voortgang</h3>
-
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
-                        <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                        <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                      </button>
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-remove">
-                        <i class="bi bi-x-lg"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <!-- /.card-header -->
-                  <div class="card-body">
-                    <!--begin::Row-->
-                    <div class="row">
-                      <div class="col-12">
-                        <div id="pie-chart"></div>
-                      </div>
-                      <!-- /.col -->
-                    </div>
-                    <!--end::Row-->
-                  </div>
-                  <!-- /.card-body -->
-                  
-                  <!-- /.footer -->
-                </div>
-                <!-- /.card -->
-
-                <!-- PRODUCT LIST -->
-                <div class="card">
-                  <div class="card-header">
-                    <h3 class="card-title">Velden te maaien</h3>
-
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
-                        <i data-lte-icon="expand" class="bi bi-plus-lg"></i>
-                        <i data-lte-icon="collapse" class="bi bi-dash-lg"></i>
-                      </button>
-                      <button type="button" class="btn btn-tool" data-lte-toggle="card-remove">
-                        <i class="bi bi-x-lg"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <!-- /.card-header -->
-                  <div class="card-body p-0">
-                    <div class="px-2">
-                      <div class="d-flex border-top py-2 px-1">
-                        <div class="col-2">
-                          <img
-                            src="./assets/img/default-150x150.png"
-                            alt="Product Image"
-                            class="img-size-50"
-                          />
-                        </div>
-                        <div class="col-10">
-                          <a href="javascript:void(0)" class="fw-bold">
-                            Veld 8
-                            <span class="badge text-bg-warning float-end"> Laag </span>
-                          </a>
-                          <div class="text-truncate">Coördinaten: -</div>
-                        </div>
-                      </div>
-                      <!-- /.item -->
-                      <div class="d-flex border-top py-2 px-1">
-                        <div class="col-2">
-                          <img
-                            src="./assets/img/default-150x150.png"
-                            alt="Product Image"
-                            class="img-size-50"
-                          />
-                        </div>
-                        <div class="col-10">
-                          <a href="javascript:void(0)" class="fw-bold">
-                            Veld 4
-                            <span class="badge text-bg-info float-end"> In afwerking </span>
-                          </a>
-                          <div class="text-truncate">
-                            Coördinaten: -
-                          </div>
-                        </div>
-                      </div>
-                      <!-- /.item -->
-                      <div class="d-flex border-top py-2 px-1">
-                        <div class="col-2">
-                          <img
-                            src="./assets/img/default-150x150.png"
-                            alt="Product Image"
-                            class="img-size-50"
-                          />
-                        </div>
-                        <div class="col-10">
-                          <a href="javascript:void(0)" class="fw-bold">
-                            Veld 9
-                            <span class="badge text-bg-danger float-end"> Hoog </span>
-                          </a>
-                          <div class="text-truncate">
-                            Coördinaten: -
-                          </div>
-                        </div>
-                      </div>
-                      <!-- /.item -->
-                      <div class="d-flex border-top py-2 px-1">
-                        <div class="col-2">
-                          <img
-                            src="./assets/img/default-150x150.png"
-                            alt="Product Image"
-                            class="img-size-50"
-                          />
-                        </div>
-                        <div class="col-10">
-                          <a href="javascript:void(0)" class="fw-bold">
-                            Veld 10
-                            <span class="badge text-bg-success float-end"> $399 </span>
-                          </a>
-                          <div class="text-truncate">Coördinaten: -</div>
-                        </div>
-                      </div>
-                      <!-- /.item -->
-                    </div>
-                  </div>
-                  <!-- /.card-body -->
-                  <div class="card-footer text-center">
-                    <a href="javascript:void(0)" class="uppercase"> Zie alle velden </a>
-                  </div>
-                  <!-- /.card-footer -->
-                </div>
-                <!-- /.card -->
-              </div>
-              <!-- /.col -->
-            </div>
-            <!--end::Row-->
-          </div>
-          <!--end::Container-->
-        </div>
-        <!--end::App Content-->
-      </main>
-      <!--end::App Main-->
-      <!--begin::Footer-->
-      <footer class="app-footer">
-        <!--begin::To the end-->
-        <div class="float-end d-none d-sm-inline">Anything you want</div>
-        <!--end::To the end-->
-        <!--begin::Copyright-->
-        <strong>
-          Copyright &copy; 2014-2026&nbsp;
-          Van der Werf IoT Dashboard.
-        </strong>
-        All rights reserved.
-        <!--end::Copyright-->
-      </footer>
-      <!--end::Footer-->
+  <!-- ── SIDEBAR ── -->
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="bi bi-flower2"></i></div>
+      <div class="sidebar-brand-text">
+        Van der Werf
+        <small>Groenvoorzieningen</small>
+      </div>
     </div>
-    <!--end::App Wrapper-->
-    <!--begin::Script-->
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <script
-      src="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/browser/overlayscrollbars.browser.es6.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <!--end::Third Party Plugin(OverlayScrollbars)--><!--begin::Required Plugin(popperjs for Bootstrap 5)-->
-    <script
-      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <!--end::Required Plugin(popperjs for Bootstrap 5)--><!--begin::Required Plugin(Bootstrap 5)-->
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <!--end::Required Plugin(Bootstrap 5)--><!--begin::Required Plugin(AdminLTE)-->
-    <script src="./js/adminlte.js"></script>
-    <!--end::Required Plugin(AdminLTE)--><!--begin::OverlayScrollbars Configure-->
-    <script>
-      const SELECTOR_SIDEBAR_WRAPPER = '.sidebar-wrapper';
-      const Default = {
-        scrollbarTheme: 'os-theme-light',
-        scrollbarAutoHide: 'leave',
-        scrollbarClickScroll: true,
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-title">Hoofdmenu</div>
+      <button class="sidebar-link active" onclick="showPage('dashboard')">
+        <i class="bi bi-grid-1x2-fill"></i> Dashboard
+      </button>
+      <button class="sidebar-link" onclick="showPage('kaart')">
+        <i class="bi bi-map-fill"></i> Kaart
+        <span class="sidebar-badge">Live</span>
+      </button>
+      <button class="sidebar-link" onclick="showPage('velden')">
+        <i class="bi bi-list-check"></i> Velden
+        <span class="sidebar-badge" id="sb-velden-count">9</span>
+      </button>
+
+      <div class="sidebar-section-title">Beheer</div>
+      <button class="sidebar-link" onclick="showPage('team')">
+        <i class="bi bi-people-fill"></i> Team
+      </button>
+      <button class="sidebar-link" onclick="showPage('instellingen')">
+        <i class="bi bi-gear-fill"></i> Instellingen
+      </button>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" id="sb-avatar">M1</div>
+      <div class="sidebar-user-info">
+        <div class="name" id="sb-username">Machinist 1</div>
+        <div class="role" id="sb-role">Medewerker</div>
+      </div>
+      <button class="btn-logout" title="Uitloggen" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div id="main-content">
+    <!-- Topbar -->
+    <div id="topbar">
+      <button class="btn sidebar-toggle-btn p-1" onclick="toggleSidebar()" style="display:none">
+        <i class="bi bi-list fs-4" style="color:var(--vdw-green)"></i>
+      </button>
+      <div>
+        <h4 id="page-title">Dashboard</h4>
+        <div class="topbar-breadcrumb">Home &rsaquo; <span id="page-crumb">Overzicht</span></div>
+      </div>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span class="badge rounded-pill" style="background:var(--vdw-green-pale);color:var(--vdw-green);font-size:.78rem">
+          <i class="bi bi-circle-fill me-1" style="font-size:.45rem"></i>Live
+        </span>
+        <span class="text-muted" style="font-size:.8rem" id="topbar-time"></span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content-area">
+
+      <!-- ══ DASHBOARD PAGE ══ -->
+      <div id="page-dashboard" class="page-section active">
+
+        <!-- Stat cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="stat-card green d-flex align-items-center gap-3">
+              <div class="icon"><i class="bi bi-check2-circle"></i></div>
+              <div>
+                <div class="label">Gemaaid</div>
+                <div class="value">12</div>
+                <div class="sub">velden vandaag</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card red d-flex align-items-center gap-3">
+              <div class="icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+              <div>
+                <div class="label">Te hoog</div>
+                <div class="value">4</div>
+                <div class="sub">velden urgent</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card orange d-flex align-items-center gap-3">
+              <div class="icon"><i class="bi bi-hourglass-split"></i></div>
+              <div>
+                <div class="label">In uitvoering</div>
+                <div class="value">3</div>
+                <div class="sub">actieve machinisten</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stat-card blue d-flex align-items-center gap-3">
+              <div class="icon"><i class="bi bi-rulers"></i></div>
+              <div>
+                <div class="label">Gem. hoogte</div>
+                <div class="value">82<span style="font-size:1rem">mm</span></div>
+                <div class="sub">huidig gemiddeld</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- Chart + progress -->
+          <div class="col-md-8">
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <i class="bi bi-activity" style="color:var(--vdw-green)"></i>
+                <h6>Grashoogte in mm</h6>
+                <div class="d-flex gap-3 ms-auto" style="font-size:.78rem">
+                  <span><span class="legend-dot" style="background:#2e7d32"></span>Na maaien</span>
+                  <span><span class="legend-dot" style="background:#66bb6a"></span>Gewenst</span>
+                </div>
+              </div>
+              <div class="dash-card-body">
+                <div id="sales-chart"></div>
+              </div>
+            </div>
+
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <i class="bi bi-bar-chart-fill" style="color:var(--vdw-green)"></i>
+                <h6>Doelstellingen</h6>
+              </div>
+              <div class="dash-card-body">
+                <div class="prog-group">
+                  <div class="prog-label"><span>Gemaaide velden</span><span><b>12</b>/20</span></div>
+                  <div class="progress"><div class="progress-bar" style="width:60%;background:var(--vdw-green)"></div></div>
+                </div>
+                <div class="prog-group">
+                  <div class="prog-label"><span>Gras te hoog (&gt;120mm)</span><span><b>4</b>/20</span></div>
+                  <div class="progress"><div class="progress-bar" style="width:20%;background:#f44336"></div></div>
+                </div>
+                <div class="prog-group">
+                  <div class="prog-label"><span>Gras op gewenste hoogte</span><span><b>9</b>/20</span></div>
+                  <div class="progress"><div class="progress-bar" style="width:45%;background:#4caf50"></div></div>
+                </div>
+                <div class="prog-group">
+                  <div class="prog-label"><span>Gras te laag (&lt;40mm)</span><span><b>3</b>/20</span></div>
+                  <div class="progress"><div class="progress-bar" style="width:15%;background:#ff9800"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Donut + velden -->
+          <div class="col-md-4">
+            <div class="dash-card mb-3">
+              <div class="dash-card-header">
+                <i class="bi bi-pie-chart-fill" style="color:var(--vdw-green)"></i>
+                <h6>Voortgang vandaag</h6>
+              </div>
+              <div class="dash-card-body p-0">
+                <div id="pie-chart"></div>
+              </div>
+            </div>
+
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <i class="bi bi-scissors" style="color:var(--vdw-green)"></i>
+                <h6>Velden te maaien</h6>
+              </div>
+              <div class="dash-card-body pt-0">
+                <div class="field-item">
+                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                  <div class="field-info">
+                    <div class="field-name">Veld 9 &mdash; Sportpark Noord</div>
+                    <div class="field-coord">52.3702° N, 4.8952° O</div>
+                  </div>
+                  <span class="badge-status badge-hoog">Hoog</span>
+                </div>
+                <div class="field-item">
+                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                  <div class="field-info">
+                    <div class="field-name">Veld 3 &mdash; Gemeentepark</div>
+                    <div class="field-coord">52.3750° N, 4.9000° O</div>
+                  </div>
+                  <span class="badge-status badge-hoog">Hoog</span>
+                </div>
+                <div class="field-item">
+                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                  <div class="field-info">
+                    <div class="field-name">Veld 4 &mdash; Berm A9</div>
+                    <div class="field-coord">52.3680° N, 4.9100° O</div>
+                  </div>
+                  <span class="badge-status badge-bezig">In uitvoering</span>
+                </div>
+                <div class="field-item">
+                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                  <div class="field-info">
+                    <div class="field-name">Veld 8 &mdash; Bedrijventerrein</div>
+                    <div class="field-coord">52.3600° N, 4.9050° O</div>
+                  </div>
+                  <span class="badge-status badge-laag">Te laag</span>
+                </div>
+                <div class="field-item">
+                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                  <div class="field-info">
+                    <div class="field-name">Veld 12 &mdash; Woonwijk Oost</div>
+                    <div class="field-coord">52.3720° N, 4.8870° O</div>
+                  </div>
+                  <span class="badge-status badge-ok">OK</span>
+                </div>
+              </div>
+              <div class="px-3 pb-3">
+                <button class="btn btn-sm w-100" style="background:var(--vdw-green-pale);color:var(--vdw-green);font-weight:600" onclick="showPage('velden')">
+                  Alle velden bekijken <i class="bi bi-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ KAART PAGE ══ -->
+      <div id="page-kaart" class="page-section">
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <i class="bi bi-map-fill" style="color:var(--vdw-green)"></i>
+            <h6>Live Kaart &mdash; Velden overzicht</h6>
+            <div class="ms-auto d-flex gap-2" style="font-size:.78rem">
+              <span><span class="legend-dot" style="background:#f44336"></span>Te hoog</span>
+              <span><span class="legend-dot" style="background:#ff9800"></span>Te laag</span>
+              <span><span class="legend-dot" style="background:#4caf50"></span>OK</span>
+              <span><span class="legend-dot" style="background:#2196f3"></span>In uitvoering</span>
+            </div>
+          </div>
+          <div id="arcgis-map"></div>
+        </div>
+      </div>
+
+      <!-- ══ VELDEN PAGE ══ -->
+      <div id="page-velden" class="page-section">
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <i class="bi bi-list-check" style="color:var(--vdw-green)"></i>
+            <h6>Alle velden &mdash; Maailijst</h6>
+            <div class="ms-auto d-flex gap-2">
+              <input class="form-control form-control-sm" placeholder="Zoeken…" id="velden-search" oninput="filterVelden()" style="width:160px" />
+              <select class="form-select form-select-sm" id="velden-filter" onchange="filterVelden()" style="width:130px">
+                <option value="">Alle statussen</option>
+                <option value="Hoog">Te hoog</option>
+                <option value="OK">OK</option>
+                <option value="Te laag">Te laag</option>
+                <option value="In uitvoering">In uitvoering</option>
+                <option value="Gemaaid">Gemaaid</option>
+              </select>
+            </div>
+          </div>
+          <div class="dash-card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0" id="velden-table">
+                <thead style="background:var(--vdw-green-pale)">
+                  <tr>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none;padding:.8rem 1.2rem">Veld</th>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Locatie</th>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Coördinaten</th>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Hoogte (mm)</th>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Status</th>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Prioriteit</th>
+                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Machinist</th>
+                  </tr>
+                </thead>
+                <tbody id="velden-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TEAM PAGE ══ -->
+      <div id="page-team" class="page-section">
+        <div class="row g-3">
+          <div class="col-md-4" id="team-cards"></div>
+          <div class="col-md-8">
+            <div class="dash-card">
+              <div class="dash-card-header"><i class="bi bi-clock-history" style="color:var(--vdw-green)"></i><h6>Activiteit vandaag</h6></div>
+              <div class="dash-card-body">
+                <div id="activity-log"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ INSTELLINGEN PAGE ══ -->
+      <div id="page-instellingen" class="page-section">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="dash-card">
+              <div class="dash-card-header"><i class="bi bi-sliders" style="color:var(--vdw-green)"></i><h6>Grashoogte drempelwaarden</h6></div>
+              <div class="dash-card-body">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Maximale hoogte (mm) &mdash; Alarm</label>
+                  <input type="number" class="form-control" value="120" id="set-max" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Gewenste hoogte (mm)</label>
+                  <input type="number" class="form-control" value="80" id="set-target" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Minimale hoogte (mm) &mdash; Alarm</label>
+                  <input type="number" class="form-control" value="40" id="set-min" />
+                </div>
+                <button class="btn" style="background:var(--vdw-green);color:#fff" onclick="saveSettings()">Opslaan</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="dash-card">
+              <div class="dash-card-header"><i class="bi bi-bell-fill" style="color:var(--vdw-green)"></i><h6>Meldingen</h6></div>
+              <div class="dash-card-body">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" checked id="notif-high" />
+                  <label class="form-check-label">Alarm bij te hoog gras</label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" checked id="notif-low" />
+                  <label class="form-check-label">Alarm bij te laag gras</label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="notif-done" />
+                  <label class="form-check-label">Melding bij klaar maaien</label>
+                </div>
+                <button class="btn" style="background:var(--vdw-green);color:#fff" onclick="saveSettings()">Opslaan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+
+    <footer style="padding:.75rem 1.5rem;border-top:1px solid #e9ecef;background:#fff;font-size:.78rem;color:#adb5bd">
+      &copy; 2026 Van der Werf Groenvoorzieningen &mdash; IoT Dashboard
+    </footer>
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js" crossorigin="anonymous"></script>
+<script src="https://js.arcgis.com/4.29/"></script>
+
+<script>
+/* ═══════════════════════════════════
+   DATA
+═══════════════════════════════════ */
+const USERS = {
+  machinist1: { pass: 'groen123', name: 'Machinist 1', role: 'Medewerker', initials: 'M1' },
+  machinist2: { pass: 'groen456', name: 'Machinist 2', role: 'Medewerker', initials: 'M2' },
+  admin:      { pass: 'admin789', name: 'Beheerder',   role: 'Beheerder',  initials: 'AD' },
+};
+
+const VELDEN = [
+  { id:1,  naam:'Veld 1',  loc:'Sportpark Noord',    lat:52.3702, lng:4.8952, hoogte:145, status:'Hoog',         prio:'Hoog',   machinist:'Machinist 1' },
+  { id:2,  naam:'Veld 2',  loc:'Stadspark Centrum',  lat:52.3780, lng:4.9010, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'-' },
+  { id:3,  naam:'Veld 3',  loc:'Gemeentepark',       lat:52.3750, lng:4.9000, hoogte:131, status:'Hoog',         prio:'Hoog',   machinist:'Machinist 2' },
+  { id:4,  naam:'Veld 4',  loc:'Berm A9',            lat:52.3680, lng:4.9100, hoogte:95,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
+  { id:5,  naam:'Veld 5',  loc:'Woonwijk West',      lat:52.3640, lng:4.8800, hoogte:78,  status:'OK',           prio:'Laag',   machinist:'-' },
+  { id:6,  naam:'Veld 6',  loc:'Recreatiegebied',    lat:52.3820, lng:4.8750, hoogte:68,  status:'OK',           prio:'Laag',   machinist:'-' },
+  { id:7,  naam:'Veld 7',  loc:'Industrieterrein Z', lat:52.3590, lng:4.9200, hoogte:34,  status:'Te laag',      prio:'Middel', machinist:'-' },
+  { id:8,  naam:'Veld 8',  loc:'Bedrijventerrein',   lat:52.3600, lng:4.9050, hoogte:37,  status:'Te laag',      prio:'Middel', machinist:'-' },
+  { id:9,  naam:'Veld 9',  loc:'Sportpark Noord B',  lat:52.3708, lng:4.8960, hoogte:158, status:'Hoog',         prio:'Hoog',   machinist:'-' },
+  { id:10, naam:'Veld 10', loc:'Schoolplein Oost',   lat:52.3730, lng:4.9080, hoogte:75,  status:'OK',           prio:'Laag',   machinist:'-' },
+  { id:11, naam:'Veld 11', loc:'Begraafplaats',      lat:52.3660, lng:4.8900, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'-' },
+  { id:12, naam:'Veld 12', loc:'Woonwijk Oost',      lat:52.3720, lng:4.8870, hoogte:88,  status:'OK',           prio:'Laag',   machinist:'-' },
+  { id:13, naam:'Veld 13', loc:'Gemeentegroen N',    lat:52.3800, lng:4.8920, hoogte:110, status:'Hoog',         prio:'Middel', machinist:'-' },
+  { id:14, naam:'Veld 14', loc:'Park De Hoef',       lat:52.3760, lng:4.8840, hoogte:85,  status:'Gemaaid',      prio:'Laag',   machinist:'Machinist 2' },
+  { id:15, naam:'Veld 15', loc:'Berm N244',          lat:52.3550, lng:4.8980, hoogte:90,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
+];
+
+/* ═══════════════════════════════════
+   LOGIN
+═══════════════════════════════════ */
+let currentUser = null;
+
+function doLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById('inp-user').value.trim().toLowerCase();
+  const p = document.getElementById('inp-pass').value;
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+
+  if (USERS[u] && USERS[u].pass === p) {
+    currentUser = { ...USERS[u], username: u };
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('sb-username').textContent = currentUser.name;
+    document.getElementById('sb-role').textContent = currentUser.role;
+    document.getElementById('sb-avatar').textContent = currentUser.initials;
+    initDashboard();
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('inp-user').value = '';
+  document.getElementById('inp-pass').value = '';
+}
+
+function togglePass() {
+  const inp = document.getElementById('inp-pass');
+  const ico = document.getElementById('eye-icon');
+  if (inp.type === 'password') { inp.type = 'text'; ico.className = 'bi bi-eye-slash'; }
+  else { inp.type = 'password'; ico.className = 'bi bi-eye'; }
+}
+
+/* ═══════════════════════════════════
+   NAVIGATIE
+═══════════════════════════════════ */
+let mapInitialized = false;
+
+function showPage(page) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+
+  document.getElementById('page-' + page).classList.add('active');
+  const btn = document.querySelector(`.sidebar-link[onclick="showPage('${page}')"]`);
+  if (btn) btn.classList.add('active');
+
+  const titles = { dashboard:'Dashboard', kaart:'Kaart', velden:'Velden', team:'Team', instellingen:'Instellingen' };
+  document.getElementById('page-title').textContent = titles[page] || page;
+  document.getElementById('page-crumb').textContent = titles[page] || page;
+
+  if (page === 'kaart' && !mapInitialized) { initMap(); mapInitialized = true; }
+  if (page === 'velden') { renderVelden(VELDEN); }
+  if (page === 'team') { renderTeam(); }
+
+  // Close sidebar on mobile
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* ═══════════════════════════════════
+   TIJD
+═══════════════════════════════════ */
+function updateTime() {
+  const now = new Date();
+  document.getElementById('topbar-time').textContent =
+    now.toLocaleDateString('nl-NL', { weekday:'short', day:'numeric', month:'short' }) + ' ' +
+    now.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+/* ═══════════════════════════════════
+   CHARTS
+═══════════════════════════════════ */
+let salesChart, pieChart;
+
+function initCharts() {
+  // Area chart
+  salesChart = new ApexCharts(document.querySelector('#sales-chart'), {
+    series: [
+      { name: 'Grashoogte na maaien', data: [105, 92, 88, 76, 110, 84, 95, 78, 102, 88, 75, 82] },
+      { name: 'Gewenste grashoogte',  data: [80,  80, 80, 80, 80,  80, 80, 80, 80,  80, 80, 80] },
+    ],
+    chart: { height: 220, type: 'area', toolbar: { show: true, tools: { download: true, selection: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } }, animations: { enabled: true } },
+    colors: ['#2e7d32', '#a5d6a7'],
+    fill: { type: ['gradient', 'solid'], gradient: { shadeIntensity: 1, opacityFrom: .4, opacityTo: .05 } },
+    stroke: { curve: 'smooth', width: [2.5, 2] },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+    xaxis: {
+      type: 'datetime',
+      categories: ['2026-01-01','2026-02-01','2026-03-01','2026-04-01','2026-05-01','2026-06-01',
+                   '2026-07-01','2026-08-01','2026-09-01','2026-10-01','2026-11-01','2026-12-01'],
+    },
+    yaxis: { labels: { formatter: v => v + ' mm' } },
+    tooltip: { x: { format: 'MMMM yyyy' }, y: { formatter: v => v + ' mm' } },
+    grid: { borderColor: '#f0f0f0' },
+    annotations: {
+      yaxis: [{ y: 120, borderColor: '#f44336', label: { text: 'Max grens', style: { color:'#f44336', background:'#ffebee' } } },
+              { y: 40,  borderColor: '#ff9800', label: { text: 'Min grens', style: { color:'#ff9800', background:'#fff3e0' } } }]
+    }
+  });
+  salesChart.render();
+
+  // Donut chart
+  pieChart = new ApexCharts(document.querySelector('#pie-chart'), {
+    series: [12, 4, 3, 2, 9],  // Gemaaid, Te hoog, In uitvoering, Te laag, OK
+    labels: ['Gemaaid', 'Te hoog', 'In uitvoering', 'Te laag', 'OK'],
+    chart: { type: 'donut', height: 270 },
+    colors: ['#4caf50', '#f44336', '#2196f3', '#ff9800', '#adb5bd'],
+    legend: { position: 'bottom', fontSize: '12px' },
+    dataLabels: { enabled: false },
+    plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Totaal', color: '#1a1a2e', formatter: w => w.globals.seriesTotals.reduce((a,b)=>a+b,0) } } } } },
+  });
+  pieChart.render();
+}
+
+/* ═══════════════════════════════════
+   ARCGIS KAART
+═══════════════════════════════════ */
+function initMap() {
+  require([
+    'esri/Map',
+    'esri/views/MapView',
+    'esri/Graphic',
+    'esri/layers/GraphicsLayer',
+    'esri/geometry/Point',
+    'esri/symbols/SimpleMarkerSymbol',
+    'esri/PopupTemplate'
+  ], function(Map, MapView, Graphic, GraphicsLayer, Point, SimpleMarkerSymbol, PopupTemplate) {
+
+    const map = new Map({ basemap: 'streets-navigation-vector' });
+
+    const view = new MapView({
+      container: 'arcgis-map',
+      map: map,
+      center: [4.9000, 52.372],
+      zoom: 13,
+    });
+
+    const statusColor = {
+      'Hoog':         [244, 67,  54,  220],
+      'Te laag':      [255, 152,  0,  220],
+      'OK':           [ 76, 175, 80,  220],
+      'In uitvoering':[33, 150, 243,  220],
+      'Gemaaid':      [156, 204, 101, 220],
+    };
+
+    const layer = new GraphicsLayer();
+
+    VELDEN.forEach(v => {
+      const color = statusColor[v.status] || [120,120,120,200];
+      const pt = new Point({ longitude: v.lng, latitude: v.lat });
+
+      const sym = {
+        type: 'simple-marker',
+        color: color,
+        size: v.status === 'Hoog' ? 18 : 14,
+        outline: { color: [255,255,255], width: 2 },
       };
-      document.addEventListener('DOMContentLoaded', function () {
-        const sidebarWrapper = document.querySelector(SELECTOR_SIDEBAR_WRAPPER);
 
-        // Disable OverlayScrollbars on mobile devices to prevent touch interference
-        const isMobile = window.innerWidth <= 992;
+      const popup = {
+        title: `{naam} — {loc}`,
+        content: `
+          <table class="esri-widget__table">
+            <tr><th>Status</th><td>{status}</td></tr>
+            <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+            <tr><th>Prioriteit</th><td>{prio}</td></tr>
+            <tr><th>Machinist</th><td>{machinist}</td></tr>
+          </table>`,
+      };
 
-        if (
-          sidebarWrapper &&
-          OverlayScrollbarsGlobal?.OverlayScrollbars !== undefined &&
-          !isMobile
-        ) {
-          OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
-            scrollbars: {
-              theme: Default.scrollbarTheme,
-              autoHide: Default.scrollbarAutoHide,
-              clickScroll: Default.scrollbarClickScroll,
-            },
-          });
-        }
+      const g = new Graphic({
+        geometry: pt,
+        symbol: sym,
+        attributes: v,
+        popupTemplate: popup,
       });
-    </script>
-    <!--end::OverlayScrollbars Configure--><!--begin::Color Mode Toggle (#6010)-->
-    <script>
-      (() => {
-        'use strict';
+      layer.add(g);
+    });
 
-        const STORAGE_KEY = 'lte-theme';
+    map.add(layer);
+  });
+}
 
-        const getStoredTheme = () => localStorage.getItem(STORAGE_KEY);
-        const setStoredTheme = (theme) => localStorage.setItem(STORAGE_KEY, theme);
+/* ═══════════════════════════════════
+   VELDEN TABEL
+═══════════════════════════════════ */
+function statusBadge(s) {
+  const m = { 'Hoog':'badge-hoog', 'Te laag':'badge-laag', 'OK':'badge-ok', 'In uitvoering':'badge-bezig', 'Gemaaid':'badge-ok' };
+  return `<span class="badge-status ${m[s]||''}">${s}</span>`;
+}
+function prioBadge(p) {
+  const m = { 'Hoog':'danger', 'Middel':'warning', 'Laag':'secondary' };
+  return `<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;
+}
 
-        const prefersDark = () => globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
+function renderVelden(data) {
+  const tbody = document.getElementById('velden-tbody');
+  tbody.innerHTML = data.map(v => `
+    <tr>
+      <td class="ps-3 fw-semibold" style="font-size:.87rem">${v.naam}</td>
+      <td style="font-size:.85rem">${v.loc}</td>
+      <td style="font-size:.8rem;color:#adb5bd">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
+      <td style="font-size:.87rem"><strong>${v.hoogte}</strong> mm</td>
+      <td>${statusBadge(v.status)}</td>
+      <td>${prioBadge(v.prio)}</td>
+      <td style="font-size:.85rem">${v.machinist}</td>
+    </tr>`).join('');
+}
 
-        const getPreferredTheme = () => {
-          const stored = getStoredTheme();
-          if (stored) return stored;
-          return prefersDark() ? 'dark' : 'light';
-        };
+function filterVelden() {
+  const q = document.getElementById('velden-search').value.toLowerCase();
+  const s = document.getElementById('velden-filter').value;
+  const filtered = VELDEN.filter(v =>
+    (v.naam.toLowerCase().includes(q) || v.loc.toLowerCase().includes(q)) &&
+    (!s || v.status === s)
+  );
+  renderVelden(filtered);
+}
 
-        const setTheme = (theme) => {
-          const resolved = theme === 'auto' ? (prefersDark() ? 'dark' : 'light') : theme;
-          document.documentElement.setAttribute('data-bs-theme', resolved);
-        };
+/* ═══════════════════════════════════
+   TEAM
+═══════════════════════════════════ */
+const TEAM = [
+  { name:'Machinist 1', initials:'M1', status:'Actief', veld:'Veld 4 – Berm A9',       since:'08:15' },
+  { name:'Machinist 2', initials:'M2', status:'Actief', veld:'Veld 3 – Gemeentepark',   since:'09:00' },
+  { name:'Beheerder',   initials:'AD', status:'Kantoor', veld:'—',                       since:'07:30' },
+];
+const ACTIVITY = [
+  { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark', icon:'scissors', color:'var(--vdw-green)' },
+  { time:'09:15', user:'Machinist 1', msg:'Veld 15 klaar gemaaid', icon:'check2-circle', color:'#4caf50' },
+  { time:'08:50', user:'Systeem',     msg:'Alarm: Veld 9 grashoogte 158mm (max 120)', icon:'exclamation-triangle-fill', color:'#f44336' },
+  { time:'08:30', user:'Machinist 1', msg:'Ingelogd op systeem', icon:'person-check', color:'#2196f3' },
+  { time:'08:15', user:'Machinist 1', msg:'Start maaien Veld 4 – Berm A9', icon:'scissors', color:'var(--vdw-green)' },
+];
 
-        setTheme(getPreferredTheme());
+function renderTeam() {
+  document.getElementById('team-cards').innerHTML = TEAM.map(t => `
+    <div class="dash-card mb-3">
+      <div class="dash-card-body d-flex align-items-center gap-3">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--vdw-green);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0">${t.initials}</div>
+        <div style="flex:1;min-width:0">
+          <div class="fw-semibold" style="font-size:.9rem">${t.name}</div>
+          <div style="font-size:.78rem;color:#adb5bd">${t.veld}</div>
+        </div>
+        <span class="badge" style="background:${t.status==='Actief'?'var(--vdw-green-pale)':'#f5f5f5'};color:${t.status==='Actief'?'var(--vdw-green)':'#6c757d'}">${t.status}</span>
+      </div>
+    </div>`).join('');
 
-        const showActiveTheme = (theme) => {
-          // Highlight the active dropdown option
-          document.querySelectorAll('[data-bs-theme-value]').forEach((el) => {
-            el.classList.remove('active');
-            el.setAttribute('aria-pressed', 'false');
-            const check = el.querySelector('.bi-check-lg');
-            if (check) check.classList.add('d-none');
-          });
-          const active = document.querySelector(`[data-bs-theme-value="${theme}"]`);
-          if (active) {
-            active.classList.add('active');
-            active.setAttribute('aria-pressed', 'true');
-            const check = active.querySelector('.bi-check-lg');
-            if (check) check.classList.remove('d-none');
-          }
-          // Sync the topbar trigger icon
-          document.querySelectorAll('[data-lte-theme-icon]').forEach((icon) => {
-            icon.classList.toggle('d-none', icon.dataset.lteThemeIcon !== theme);
-          });
-        };
+  document.getElementById('activity-log').innerHTML = ACTIVITY.map(a => `
+    <div class="d-flex gap-3 mb-3">
+      <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0">
+        <i class="bi bi-${a.icon}"></i>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:.83rem;font-weight:600">${a.user}</div>
+        <div style="font-size:.82rem;color:#495057">${a.msg}</div>
+        <div style="font-size:.75rem;color:#adb5bd">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
 
-        globalThis.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-          const stored = getStoredTheme();
-          if (!stored || stored === 'auto') setTheme(getPreferredTheme());
-        });
+/* ═══════════════════════════════════
+   INSTELLINGEN
+═══════════════════════════════════ */
+function saveSettings() {
+  alert('Instellingen opgeslagen ✓');
+}
 
-        document.addEventListener('DOMContentLoaded', () => {
-          showActiveTheme(getPreferredTheme());
-          document.querySelectorAll('[data-bs-theme-value]').forEach((toggle) => {
-            toggle.addEventListener('click', () => {
-              const theme = toggle.getAttribute('data-bs-theme-value');
-              setStoredTheme(theme);
-              setTheme(theme);
-              showActiveTheme(theme);
-            });
-          });
-        });
-      })();
-    </script>
-    <!--end::Color Mode Toggle-->
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+function initDashboard() {
+  initCharts();
+}
+</script>
 
-    <!-- OPTIONAL SCRIPTS -->
-
-    <!-- apexcharts -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js"
-      integrity="sha256-+vh8GkaU7C9/wbSLIcwq82tQ2wTf44aOHA8HlBMwRI8="
-      crossorigin="anonymous"
-    ></script>
-
-    <script>
-      // NOTICE!! DO NOT USE ANY OF THIS JAVASCRIPT
-      // IT'S ALL JUST JUNK FOR DEMO
-      // ++++++++++++++++++++++++++++++++++++++++++
-
-      /* apexcharts
-       * -------
-       * Here we will create a few charts using apexcharts
-       */
-
-      //-----------------------
-      // - MONTHLY SALES CHART -
-      //-----------------------
-
-      const sales_chart_options = {
-        series: [
-          {
-            name: 'Grashoogte na maaien',
-            data: [28, 48, 40, 19, 86, 27, 90],
-          },
-          {
-            name: 'Gewenste grashoogte',
-            data: [65, 59, 80, 81, 56, 55, 40],
-          },
-        ],
-        chart: {
-          height: 180,
-          type: 'area',
-          toolbar: {
-            show: false,
-          },
-        },
-        legend: {
-          show: false,
-        },
-        colors: ['#0d6efd', '#20c997'],
-        dataLabels: {
-          enabled: false,
-        },
-        stroke: {
-          curve: 'smooth',
-        },
-        xaxis: {
-          type: 'datetime',
-          categories: [
-            '2023-01-01',
-            '2023-02-01',
-            '2023-03-01',
-            '2023-04-01',
-            '2023-05-01',
-            '2023-06-01',
-            '2023-07-01',
-          ],
-        },
-        tooltip: {
-          x: {
-            format: 'MMMM yyyy',
-          },
-        },
-      };
-
-      const sales_chart = new ApexCharts(
-        document.querySelector('#sales-chart'),
-        sales_chart_options,
-      );
-      sales_chart.render();
-
-      //---------------------------
-      // - END MONTHLY SALES CHART -
-      //---------------------------
-
-      function createSparklineChart(selector, data) {
-        const options = {
-          series: [{ data }],
-          chart: {
-            type: 'line',
-            width: 150,
-            height: 30,
-            sparkline: {
-              enabled: true,
-            },
-          },
-          colors: ['var(--bs-primary)'],
-          stroke: {
-            width: 2,
-          },
-          tooltip: {
-            fixed: {
-              enabled: false,
-            },
-            x: {
-              show: false,
-            },
-            y: {
-              title: {
-                formatter() {
-                  return '';
-                },
-              },
-            },
-            marker: {
-              show: false,
-            },
-          },
-        };
-
-        const chart = new ApexCharts(document.querySelector(selector), options);
-        chart.render();
-      }
-
-      const table_sparkline_1_data = [25, 66, 41, 89, 63, 25, 44, 12, 36, 9, 54];
-      const table_sparkline_2_data = [12, 56, 21, 39, 73, 45, 64, 52, 36, 59, 44];
-      const table_sparkline_3_data = [15, 46, 21, 59, 33, 15, 34, 42, 56, 19, 64];
-      const table_sparkline_4_data = [30, 56, 31, 69, 43, 35, 24, 32, 46, 29, 64];
-      const table_sparkline_5_data = [20, 76, 51, 79, 53, 35, 54, 22, 36, 49, 64];
-      const table_sparkline_6_data = [5, 36, 11, 69, 23, 15, 14, 42, 26, 19, 44];
-      const table_sparkline_7_data = [12, 56, 21, 39, 73, 45, 64, 52, 36, 59, 74];
-
-      createSparklineChart('#table-sparkline-1', table_sparkline_1_data);
-      createSparklineChart('#table-sparkline-2', table_sparkline_2_data);
-      createSparklineChart('#table-sparkline-3', table_sparkline_3_data);
-      createSparklineChart('#table-sparkline-4', table_sparkline_4_data);
-      createSparklineChart('#table-sparkline-5', table_sparkline_5_data);
-      createSparklineChart('#table-sparkline-6', table_sparkline_6_data);
-      createSparklineChart('#table-sparkline-7', table_sparkline_7_data);
-
-      //-------------
-      // - PIE CHART -
-      //-------------
-
-      const pie_chart_options = {
-        series: [700, 500],
-        chart: {
-          type: 'donut',
-          // Pin an explicit height to avoid an ApexCharts ResizeObserver feedback
-          // loop on browser zoom (most visible on Edge). Fixes #6019.
-          height: 350,
-        },
-        labels: ['Gemaaid', 'Ongemaaid'],
-        dataLabels: {
-          enabled: false,
-        },
-        colors: ['#0d6efd', '#D3D3D3'],
-      };
-
-      const pie_chart = new ApexCharts(document.querySelector('#pie-chart'), pie_chart_options);
-      pie_chart.render();
-
-      //-----------------
-      // - END PIE CHART -
-      //-----------------
-    </script>
-    <!--end::Script-->
-  </body>
-  <!--end::Body-->
+</body>
 </html>
