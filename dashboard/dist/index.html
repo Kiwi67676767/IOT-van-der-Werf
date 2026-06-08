@@ -392,6 +392,10 @@
               <span><span class="ld" style="background:#9c27b0"></span>Gemaaid</span>
             </div>
           </div>
+          <div id="bgt-status" style="font-size:.75rem;color:#6c757d;padding:.3rem .9rem;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;align-items:center;gap:.4rem">
+            <span class="spinner-border spinner-border-sm" style="width:.75rem;height:.75rem;border-width:2px"></span>
+            <span>Exacte veldbegrenzingen ophalen uit BGT…</span>
+          </div>
           <div id="arcgis-map"></div>
         </div>
       </div>
@@ -421,8 +425,8 @@
                   <th style="border:none">Hoogte</th>
                   <th style="border:none">Status</th>
                   <th style="border:none">Prioriteit</th>
-                  <th style="border:none">Machinist</th>
-                  <th id="th-toewijzen" style="border:none;display:none">Toewijzen</th>
+                  <th id="th-machinist"  style="border:none">Machinist</th>
+                  <th id="th-stakeholder" style="border:none;display:none">Stakeholder</th>
                 </tr>
               </thead>
               <tbody id="v-tbody"></tbody>
@@ -753,21 +757,21 @@ function _rings(cx, cy, w=0.0009, h=0.0006){
   return [[[cx-w,cy-h],[cx+w,cy-h],[cx+w,cy+h],[cx-w,cy+h],[cx-w,cy-h]]];
 }
 const VELDEN = [
-  { id:1,  naam:'Stadspark Noord',       loc:'Stadspark Groningen',      lat:53.2138, lng:6.5472, hoogte:112, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.5472,53.2138,0.0014,0.0009) },
-  { id:2,  naam:'Noorderplantsoen A',    loc:'Noorderplantsoen',         lat:53.2252, lng:6.5549, hoogte:78,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5549,53.2252) },
-  { id:3,  naam:'Noorderplantsoen B',    loc:'Noorderplantsoen',         lat:53.2238, lng:6.5571, hoogte:83,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5571,53.2238) },
-  { id:4,  naam:'Kardinge Sportveld 1',  loc:'Sportpark Kardinge',       lat:53.2341, lng:6.6158, hoogte:145, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.6158,53.2341,0.0012,0.0008) },
-  { id:5,  naam:'Kardinge Sportveld 2',  loc:'Sportpark Kardinge',       lat:53.2328, lng:6.6182, hoogte:92,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.6182,53.2328,0.0012,0.0008) },
-  { id:6,  naam:'Europapark Gazon',      loc:'Europapark',               lat:53.2091, lng:6.5841, hoogte:35,  status:'Te laag',       prio:'Middel', machinist:'—', rings:_rings(6.5841,53.2091) },
-  { id:7,  naam:'Corpus den Hoorn A',    loc:'Corpus den Hoorn',         lat:53.1872, lng:6.5511, hoogte:88,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5511,53.1872) },
-  { id:8,  naam:'Corpus den Hoorn B',    loc:'Corpus den Hoorn',         lat:53.1855, lng:6.5538, hoogte:130, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.5538,53.1855) },
-  { id:9,  naam:'Drafbaan Groenstrook',  loc:'Drafbaan Groningen',       lat:53.2178, lng:6.5682, hoogte:75,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5682,53.2178,0.0007,0.0004) },
-  { id:10, naam:'Selwerd Park',          loc:'Selwerd',                  lat:53.2311, lng:6.5488, hoogte:67,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5488,53.2311) },
-  { id:11, naam:'De Wijert Berm',        loc:'De Wijert',                lat:53.1978, lng:6.5421, hoogte:155, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.5421,53.1978,0.0007,0.0004) },
-  { id:12, naam:'Hortus Botanicus Gras', loc:'Hortus Botanicus',         lat:53.2192, lng:6.5728, hoogte:60,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5728,53.2192,0.0006,0.0004) },
-  { id:13, naam:'Paddepoel Sportveld',   loc:'Sportpark Paddepoel',      lat:53.2421, lng:6.5512, hoogte:98,  status:'In uitvoering', prio:'Middel', machinist:'Machinist 1', rings:_rings(6.5512,53.2421,0.0012,0.0008) },
-  { id:14, naam:'Zernike Campus Gazon',  loc:'Zernike Campus',           lat:53.2408, lng:6.5348, hoogte:82,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5348,53.2408) },
-  { id:15, naam:'Lewenborg Plantsoen',   loc:'Lewenborg',                lat:53.2158, lng:6.6238, hoogte:115, status:'Hoog',          prio:'Middel', machinist:'—', rings:_rings(6.6238,53.2158) },
+  { id:1,  naam:'Stadspark Noord',       loc:'Stadspark Groningen',  lat:53.2138, lng:6.5472, hoogte:112, status:'Hoog',          prio:'Hoog',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5472,53.2138,0.0014,0.0009) },
+  { id:2,  naam:'Noorderplantsoen A',    loc:'Noorderplantsoen',     lat:53.2252, lng:6.5549, hoogte:78,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5549,53.2252) },
+  { id:3,  naam:'Noorderplantsoen B',    loc:'Noorderplantsoen',     lat:53.2238, lng:6.5571, hoogte:83,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5571,53.2238) },
+  { id:4,  naam:'Kardinge Sportveld 1',  loc:'Sportpark Kardinge',   lat:53.2341, lng:6.6158, hoogte:145, status:'Hoog',          prio:'Hoog',   machinist:'—',          stakeholder:'Sportpark Kardinge BV', rings:_rings(6.6158,53.2341,0.0012,0.0008) },
+  { id:5,  naam:'Kardinge Sportveld 2',  loc:'Sportpark Kardinge',   lat:53.2328, lng:6.6182, hoogte:92,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Sportpark Kardinge BV', rings:_rings(6.6182,53.2328,0.0012,0.0008) },
+  { id:6,  naam:'Europapark Gazon',      loc:'Europapark',           lat:53.2091, lng:6.5841, hoogte:35,  status:'Te laag',       prio:'Middel', machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5841,53.2091) },
+  { id:7,  naam:'Corpus den Hoorn A',    loc:'Corpus den Hoorn',     lat:53.1872, lng:6.5511, hoogte:88,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'—',                   rings:_rings(6.5511,53.1872) },
+  { id:8,  naam:'Corpus den Hoorn B',    loc:'Corpus den Hoorn',     lat:53.1855, lng:6.5538, hoogte:130, status:'Hoog',          prio:'Hoog',   machinist:'—',          stakeholder:'—',                   rings:_rings(6.5538,53.1855) },
+  { id:9,  naam:'Drafbaan Groenstrook',  loc:'Drafbaan Groningen',   lat:53.2178, lng:6.5682, hoogte:75,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5682,53.2178,0.0007,0.0004) },
+  { id:10, naam:'Selwerd Park',          loc:'Selwerd',              lat:53.2311, lng:6.5488, hoogte:67,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5488,53.2311) },
+  { id:11, naam:'De Wijert Berm',        loc:'De Wijert',            lat:53.1978, lng:6.5421, hoogte:155, status:'Hoog',          prio:'Hoog',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5421,53.1978,0.0007,0.0004) },
+  { id:12, naam:'Hortus Botanicus Gras', loc:'Hortus Botanicus',     lat:53.2192, lng:6.5728, hoogte:60,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Gemeente Groningen',  rings:_rings(6.5728,53.2192,0.0006,0.0004) },
+  { id:13, naam:'Paddepoel Sportveld',   loc:'Sportpark Paddepoel',  lat:53.2421, lng:6.5512, hoogte:98,  status:'In uitvoering', prio:'Middel', machinist:'Machinist 1', stakeholder:'Sportpark Kardinge BV', rings:_rings(6.5512,53.2421,0.0012,0.0008) },
+  { id:14, naam:'Zernike Campus Gazon',  loc:'Zernike Campus',       lat:53.2408, lng:6.5348, hoogte:82,  status:'OK',            prio:'Laag',   machinist:'—',          stakeholder:'Sportpark Kardinge BV', rings:_rings(6.5348,53.2408) },
+  { id:15, naam:'Lewenborg Plantsoen',   loc:'Lewenborg',            lat:53.2158, lng:6.6238, hoogte:115, status:'Hoog',          prio:'Middel', machinist:'—',          stakeholder:'—',                   rings:_rings(6.6238,53.2158) },
 ];
 
 const ACTIVITY = [
@@ -912,6 +916,8 @@ function initApp() {
   if(!chartsInit && CU.role==='admin') { initCharts(); chartsInit=true; }
   renderDashFields();
   showPage(startPage);
+  // Laad echte BGT-polygonen op de achtergrond (geen blokkering)
+  laadBGTPolygonen();
 }
 
 /* ── TIJD ── */
@@ -959,37 +965,113 @@ function initCharts() {
    ARCGIS MAP — POLYGOON WEERGAVE
 ═══════════════════════════════════════ */
 
-// Maak een rechthoekig polygoon (~veldbreedte) rondom een centroid
+/* ═══════════════════════════════════════
+   BGT POLYGONEN VIA PDOK
+   Haalt exacte grenzen van grasvelden op uit de
+   Basisregistratie Grootschalige Topografie (NL overheid)
+═══════════════════════════════════════ */
+async function fetchBGTRings(lat, lng) {
+  // Zoekradius ~250m rond centroid
+  const r = 0.0025;
+  const bbox = `${lng-r},${lat-r},${lng+r},${lat+r}`;
+  const url  = `https://service.pdok.nl/lv/bgt/wfs/v1_0` +
+    `?service=WFS&version=2.0.0&request=GetFeature` +
+    `&typeName=bgt:begroeidterreindeel&outputFormat=application/json` +
+    `&bbox=${bbox}&count=40&srsName=EPSG:4326`;
+  try {
+    const res  = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.features?.length) return null;
+
+    // Score: gras-types krijgen voorrang, daarna kortste afstand tot centroid
+    const GRAS = ['grasland', 'groenvoorziening', 'boomgaard', 'bouwland', 'heide'];
+    const scored = data.features
+      .filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
+      .map(f => {
+        const fv = (f.properties.fysiekVoorkomen || '').toLowerCase();
+        const isGras = GRAS.some(g => fv.includes(g));
+        const ring   = f.geometry.type === 'Polygon'
+          ? f.geometry.coordinates[0]
+          : f.geometry.coordinates[0][0];
+        const cx = ring.reduce((s,c)=>s+c[0],0) / ring.length;
+        const cy = ring.reduce((s,c)=>s+c[1],0) / ring.length;
+        const dist = Math.hypot(cx - lng, cy - lat);
+        return { f, dist, isGras };
+      })
+      .sort((a,b) => {
+        if (a.isGras !== b.isGras) return a.isGras ? -1 : 1;
+        return a.dist - b.dist;
+      });
+
+    if (!scored.length) return null;
+    const best = scored[0].f;
+    // Geef rings terug in ArcGIS-formaat: [[lon,lat],…]
+    if (best.geometry.type === 'Polygon')      return best.geometry.coordinates;
+    if (best.geometry.type === 'MultiPolygon') return best.geometry.coordinates.flat();
+  } catch(e) {
+    console.warn('BGT fetch mislukt:', e);
+  }
+  return null;
+}
+
+// Laad BGT-polygonen voor alle velden (op de achtergrond)
+async function laadBGTPolygonen() {
+  let geladen = 0;
+  await Promise.allSettled(VELDEN.map(async v => {
+    try {
+      const rings = await fetchBGTRings(v.lat, v.lng);
+      if (rings?.length) {
+        v.rings   = rings;
+        v.bgtEcht = true;
+        geladen++;
+      }
+    } catch(e) { /* gebruik rechthoek als fallback */ }
+  }));
+
+  // Verberg laad-indicator
+  const bgtEl = document.getElementById('bgt-status');
+  if (bgtEl) {
+    if (geladen > 0) {
+      bgtEl.innerHTML = `<i class="bi bi-check2-circle" style="color:var(--g)"></i> Exacte BGT-grenzen geladen voor ${geladen} van ${VELDEN.length} velden`;
+      setTimeout(() => bgtEl.style.display='none', 3000);
+    } else {
+      bgtEl.style.display = 'none';
+    }
+  }
+
+  // Ververs alle open kaarten met de echte polygonen
+  Object.entries(mapViews).forEach(([id, mv]) => {
+    if (mv?.layer) {
+      const showAll = !id.includes('route');
+      refreshMap(id, showAll);
+    }
+  });
+}
+
+// Maak polygoon: gebruik BGT-rings als die er zijn, anders rechthoek als noodoplossing
 function maakPolygon(lat, lng, rings) {
   if (rings && rings.length) {
-    // Echte ArcGIS polygoon (uit import)
     return { type:'polygon', rings };
   }
-  // Genereer ~80m × 60m rechthoek rondom centroid
-  const dLat = 0.00040;  // ~44m
-  const dLng = 0.00065;  // ~44m gecorrigeerd voor breedtegraad NL
+  // Noodrechthoek (~80m × 60m) zolang BGT nog niet geladen is
+  const dLat = 0.00040, dLng = 0.00065;
   return {
     type: 'polygon',
-    rings: [[
-      [lng - dLng, lat - dLat],
-      [lng + dLng, lat - dLat],
-      [lng + dLng, lat + dLat],
-      [lng - dLng, lat + dLat],
-      [lng - dLng, lat - dLat],
-    ]],
+    rings: [[[lng-dLng,lat-dLat],[lng+dLng,lat-dLat],[lng+dLng,lat+dLat],[lng-dLng,lat+dLat],[lng-dLng,lat-dLat]]],
   };
 }
 
 // Kleur op basis van maai-status
 function statusSymbol(status) {
   const cfg = {
-    'Hoog':          { fill:[244,67,54,40],   border:[244,67,54],   w:3 },
-    'Te laag':       { fill:[255,152,0,40],   border:[255,152,0],   w:2 },
-    'OK':            { fill:[76,175,80,40],   border:[76,175,80],   w:2 },
-    'In uitvoering': { fill:[33,150,243,40],  border:[33,150,243],  w:2 },
-    'Gemaaid':       { fill:[156,39,176,30],  border:[156,39,176],  w:2 },
+    'Hoog':          { fill:[244,67,54,55],   border:[220,30,20,255],   w:3.5 },
+    'Te laag':       { fill:[255,152,0,55],   border:[230,120,0,255],   w:3   },
+    'OK':            { fill:[76,175,80,55],   border:[40,130,45,255],   w:2.5 },
+    'In uitvoering': { fill:[33,150,243,55],  border:[20,100,200,255],  w:3   },
+    'Gemaaid':       { fill:[156,39,176,45],  border:[120,20,150,255],  w:2.5 },
   };
-  const c = cfg[status] || { fill:[120,120,120,30], border:[120,120,120], w:2 };
+  const c = cfg[status] || { fill:[120,120,120,40], border:[80,80,80,255], w:2 };
   return {
     type: 'simple-fill',
     color: c.fill,
@@ -1087,15 +1169,20 @@ function refreshMap(containerId, showAll) {
 ═══════════════════════════════════════ */
 function getRoute() {
   const prio = {Hoog:0,'Te laag':1,'In uitvoering':2,OK:3,Gemaaid:99};
-  return [...VELDEN]
-    .filter(v => v.status !== 'Gemaaid' && v.status !== 'OK')
-    .concat(VELDEN.filter(v => v.status === 'OK'))
-    .sort((a,b) => (prio[a.status]??5) - (prio[b.status]??5));
+  // Machinist ziet alleen zijn eigen toegewezen velden
+  const basis = (CU && CU.role === 'machinist')
+    ? VELDEN.filter(v => v.machinist === CU.name)
+    : VELDEN;
+  return [...basis].sort((a,b) => (prio[a.status]??5) - (prio[b.status]??5));
 }
 
 function buildRoute() {
   const route = getRoute();
   const list = document.getElementById('route-list');
+  if(!route.length){
+    list.innerHTML=`<div class="text-center py-5 text-muted" style="font-size:.88rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Geen velden toegewezen.<br>Vraag de beheerder om velden aan jou toe te wijzen.</div>`;
+    return;
+  }
   list.innerHTML = route.map((v,i) => {
     const urgent = v.status==='Hoog';
     const medium = v.status==='Te laag'||v.status==='In uitvoering';
@@ -1171,27 +1258,30 @@ function toggleMeting() {
 function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
 function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
 
-const MACHINISTEN = ['—','Machinist 1','Machinist 2'];
+const MACHINISTEN   = ['—','Machinist 1','Machinist 2'];
+const STAKEHOLDERS  = ['—','Gemeente Groningen','Sportpark Kardinge BV'];
 
 function renderVelden(data){
   const isAdmin = CU && CU.role === 'admin';
-  // Toon/verberg toewijzen-kolom
-  const thTw = document.getElementById('th-toewijzen');
-  if(thTw) thTw.style.display = isAdmin ? '' : 'none';
+  const thMach  = document.getElementById('th-machinist');
+  const thStake = document.getElementById('th-stakeholder');
+  if(thMach)  thMach.style.display  = isAdmin ? '' : 'none';
+  if(thStake) thStake.style.display = isAdmin ? '' : 'none';
 
   if(!data.length){
-    document.getElementById('v-tbody').innerHTML=`<tr><td colspan="8" class="text-center py-4 text-muted" style="font-size:.85rem">
+    document.getElementById('v-tbody').innerHTML=`<tr><td colspan="9" class="text-center py-4 text-muted" style="font-size:.85rem">
       Geen velden gevonden. Importeer velden via <strong>Velden importeren</strong>.
     </td></tr>`;
     return;
   }
 
   document.getElementById('v-tbody').innerHTML=data.map(v=>{
-    const machSelect = isAdmin
-      ? `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
-           ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
-         </select>`
-      : v.machinist;
+    const machSelect = `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
+        ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
+      </select>`;
+    const stakeSelect = `<select class="form-select form-select-sm" style="min-width:160px" onchange="wijsStakeholderToe(${v.id},this.value)">
+        ${STAKEHOLDERS.map(s=>`<option ${v.stakeholder===s?'selected':''}>${s}</option>`).join('')}
+      </select>`;
     return `<tr>
       <td class="ps-3 fw-semibold">${v.naam}</td>
       <td>${v.loc}</td>
@@ -1199,8 +1289,8 @@ function renderVelden(data){
       <td><strong style="color:${v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32')}">${v.hoogte}</strong> mm</td>
       <td>${bsBadge(v.status)}</td>
       <td>${prioBadge(v.prio)}</td>
-      <td>${isAdmin ? '' : v.machinist}</td>
-      ${isAdmin ? `<td>${machSelect}</td>` : ''}
+      <td>${isAdmin ? machSelect  : v.machinist}</td>
+      <td style="display:${isAdmin?'':'none'}">${stakeSelect}</td>
     </tr>`;
   }).join('');
 }
@@ -1209,10 +1299,20 @@ function wijsToe(veldId, machinist) {
   const v = VELDEN.find(x => x.id === veldId);
   if (!v) return;
   v.machinist = machinist;
-  // Toon korte bevestiging
   const toast = document.createElement('div');
   toast.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;background:var(--g);color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.84rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)';
-  toast.textContent=`✓ ${v.naam} toegewezen aan ${machinist}`;
+  toast.textContent=`✓ ${v.naam} → Machinist: ${machinist}`;
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 2500);
+}
+
+function wijsStakeholderToe(veldId, stakeholder) {
+  const v = VELDEN.find(x => x.id === veldId);
+  if (!v) return;
+  v.stakeholder = stakeholder;
+  const toast = document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;background:#1565c0;color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.84rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+  toast.textContent=`✓ ${v.naam} → Stakeholder: ${stakeholder}`;
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(), 2500);
 }
@@ -1239,7 +1339,7 @@ function renderDashFields(){
    STAKEHOLDER VIEW
 ═══════════════════════════════════════ */
 function renderStakeholder(){
-  const myVelden=VELDEN.filter(v=>CU.assignedVelden&&CU.assignedVelden.includes(v.id));
+  const myVelden=VELDEN.filter(v=>v.stakeholder===CU.contractName);
   document.getElementById('stake-contract-name').textContent=CU.contractName||'';
 
   // Stat cards
@@ -1545,7 +1645,7 @@ function importeerGeselecteerde() {
     const nextId = VELDEN.length ? Math.max(...VELDEN.map(v=>v.id))+nieuw+1 : nieuw+1;
     const status = hoogte>120?'Hoog':(hoogte<40?'Te laag':'OK');
     const prio   = hoogte>120?'Hoog':(hoogte<70?'Middel':'Laag');
-    VELDEN.push({ id:nextId, naam, loc, lat, lng, hoogte, status, prio, machinist:'—', rings });
+    VELDEN.push({ id:nextId, naam, loc, lat, lng, hoogte, status, prio, machinist:'—', stakeholder:'—', rings });
     nieuw++;
   });
 
