@@ -1,10 +1,30 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, jsonify
 import os
+from datetime import datetime
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist')
+
+# In-memory opslag voor metingen
+metingen = []
+
+
+@app.route('/data', methods=['POST'])
+def ontvang_meting():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Geen JSON data"}), 400
+    data['timestamp'] = datetime.utcnow().isoformat()
+    metingen.append(data)
+    print(f"Meting ontvangen: {data}")
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route('/api/metingen', methods=['GET'])
+def get_metingen():
+    return jsonify(metingen)
 
 
 @app.route('/')
