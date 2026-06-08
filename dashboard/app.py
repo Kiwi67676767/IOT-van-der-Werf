@@ -1,14 +1,44 @@
 from flask import Flask, send_from_directory, request, jsonify
 import os
 from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist')
 
-# In-memory opslag voor metingen
-metingen = []
+# Database instellen via Railway's DATABASE_URL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', '').replace('postgres://', 'postgresql://')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+
+# Database model
+class Meting(db.Model):
+    __tablename__ = 'metingen'
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(50))
+    gras_hoogte_cm = db.Column(db.Float)
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'gras_hoogte_cm': self.gras_hoogte_cm,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'timestamp': self.timestamp.isoformat()
+        }
+
+
+# Tabellen aanmaken als ze nog niet bestaan
+with app.app_context():
+    db.create_all()
 
 
 @app.route('/data', methods=['POST'])
@@ -16,15 +46,23 @@ def ontvang_meting():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Geen JSON data"}), 400
-    data['timestamp'] = datetime.utcnow().isoformat()
-    metingen.append(data)
-    print(f"Meting ontvangen: {data}")
+
+    meting = Meting(
+        device_id=data.get('device_id'),
+        gras_hoogte_cm=data.get('gras_hoogte_cm'),
+        latitude=data.get('latitude'),
+        longitude=data.get('longitude')
+    )
+    db.session.add(meting)
+    db.session.commit()
+    print(f"Meting opgeslagen: {data}")
     return jsonify({"status": "ok"}), 200
 
 
 @app.route('/api/metingen', methods=['GET'])
 def get_metingen():
-    return jsonify(metingen)
+    metingen = Meting.query.order_by(Meting.timestamp.desc()).all()
+    return jsonify([m.to_dict() for m in metingen])
 
 
 @app.route('/')
@@ -36,17 +74,14 @@ def index():
 def serve_file(path):
     full_path = os.path.join(DIST_DIR, path)
 
-    # Als het bestand bestaat, stuur het op
     if os.path.isfile(full_path):
         return send_from_directory(DIST_DIR, path)
 
-    # Als het een map is, zoek naar index.html erin
     if os.path.isdir(full_path):
         index_path = os.path.join(full_path, 'index.html')
         if os.path.isfile(index_path):
             return send_from_directory(full_path, 'index.html')
 
-    # Terugval: stuur de hoofdpagina
     return send_from_directory(DIST_DIR, 'index.html'), 404
 
 
