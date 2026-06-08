@@ -8,8 +8,14 @@ app = Flask(__name__, static_folder='dist', static_url_path='')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist')
 
-# Database instellen via Railway's DATABASE_URL
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', '').replace('postgres://', 'postgresql://')
+# Database instellen via Railway's DATABASE_URL, fallback naar SQLite lokaal
+_db_url = os.environ.get('DATABASE_URL', '')
+if _db_url.startswith('postgres://'):
+    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+if not _db_url:
+    _db_url = 'sqlite:///' + os.path.join(BASE_DIR, 'metingen.db')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
