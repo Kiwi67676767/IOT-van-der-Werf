@@ -230,6 +230,14 @@
 
     footer { padding: .7rem 1.5rem; border-top: 1px solid #e9ecef; background: #fff; font-size: .76rem; color: #adb5bd; }
 
+    /* ── IMPORT ── */
+    .import-status-ok      { background:#e8f5e9; border:1px solid #a5d6a7; color:#1b5e20; }
+    .import-status-err     { background:#ffebee; border:1px solid #ef9a9a; color:#b71c1c; }
+    .import-status-loading { background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; }
+    .spin { animation: spin .8s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .import-row-exists td { background:#f9fef9 !important; }
+
     /* ── SETTINGS FIX ── */
     .settings-group { background: #f8f9fa; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
     .settings-group label { font-size: .83rem; font-weight: 600; color: #495057; display: block; margin-bottom: .4rem; }
@@ -488,6 +496,106 @@
         </div>
       </div>
 
+      <!-- ══ ARCGIS IMPORT ══ -->
+      <div id="page-import" class="page">
+
+        <!-- Stap 1: URL invoeren -->
+        <div class="dc mb-3">
+          <div class="dch">
+            <i class="bi bi-cloud-arrow-down-fill" style="color:var(--g)"></i>
+            <h6>ArcGIS Feature Service importeren</h6>
+            <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 1 — Verbinding</span>
+          </div>
+          <div class="dcb">
+            <p style="font-size:.84rem;color:#6c757d;margin-bottom:1rem">
+              Voer de URL in van de ArcGIS Feature Service of Feature Layer waar de velden in staan.
+              Zodra een contract wordt aangemaakt en het veld in ArcGIS wordt gezet, kun je het hier importeren.
+            </p>
+            <div class="row g-3 align-items-end">
+              <div class="col-md-8">
+                <label class="form-label fw-semibold" style="font-size:.83rem">Feature Service URL</label>
+                <input id="import-url" type="text" class="form-control"
+                  placeholder="https://services.arcgis.com/.../FeatureServer/0"
+                  value="https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Cities/FeatureServer/0" />
+                <div style="font-size:.75rem;color:#adb5bd;margin-top:.3rem">
+                  Vul de URL in van jouw ArcGIS Online of Portal feature layer
+                </div>
+              </div>
+              <div class="col-md-2">
+                <button class="btn w-100 py-2" style="background:var(--g);color:#fff;font-weight:600" onclick="testImportVerbinding()">
+                  <i class="bi bi-plug-fill me-1"></i>Verbinden
+                </button>
+              </div>
+              <div class="col-md-2">
+                <button class="btn w-100 py-2 btn-outline-secondary" onclick="resetImport()">
+                  <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Verbindingsstatus -->
+            <div id="import-status" class="mt-3" style="display:none">
+              <div id="import-status-inner" class="p-3 rounded" style="font-size:.84rem"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stap 2: Veld-mapping -->
+        <div class="dc mb-3" id="import-mapping-card" style="display:none">
+          <div class="dch">
+            <i class="bi bi-sliders2" style="color:var(--g)"></i>
+            <h6>Velden koppelen</h6>
+            <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 2 — Mapping</span>
+          </div>
+          <div class="dcb">
+            <p style="font-size:.84rem;color:#6c757d;margin-bottom:1rem">
+              Koppel de ArcGIS attributen aan de velden in het dashboard.
+            </p>
+            <div class="row g-3" id="import-mapping-fields"></div>
+            <div class="mt-3">
+              <button class="btn py-2 px-4" style="background:var(--g);color:#fff;font-weight:600" onclick="laadVooruitblik()">
+                <i class="bi bi-eye me-1"></i>Laad vooruitblik
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stap 3: Preview & import -->
+        <div class="dc" id="import-preview-card" style="display:none">
+          <div class="dch">
+            <i class="bi bi-table" style="color:var(--g)"></i>
+            <h6>Importeer velden — <span id="import-preview-count">0</span> gevonden</h6>
+            <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 3 — Importeer</span>
+            <div class="ms-2 d-flex gap-2">
+              <button class="btn btn-sm" style="background:var(--g);color:#fff;font-weight:600" onclick="importeerGeselecteerde()">
+                <i class="bi bi-cloud-arrow-down me-1"></i>Importeer geselecteerde
+              </button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:var(--gp)">
+                <tr>
+                  <th style="width:40px;border:none;padding:.8rem 1rem">
+                    <input type="checkbox" id="import-select-all" onchange="toggleAlleImport(this.checked)" />
+                  </th>
+                  <th style="border:none">Naam</th>
+                  <th style="border:none">Locatie</th>
+                  <th style="border:none">Coördinaten</th>
+                  <th style="border:none">Status</th>
+                  <th style="border:none">Reeds actief</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody"></tbody>
+            </table>
+          </div>
+          <div class="p-3" id="import-result" style="display:none">
+            <div class="alert alert-success mb-0" style="font-size:.84rem"></div>
+          </div>
+        </div>
+
+      </div>
+
       <!-- ══ TEAM ══ -->
       <div id="page-team" class="page">
         <div class="row g-3">
@@ -647,6 +755,7 @@ const NAV = {
     { page:'kaart',     icon:'map-fill',      label:'Kaart',    badge:'Live' },
     { page:'velden',    icon:'list-check',    label:'Velden',   badge:'15' },
     { sec:'Beheer' },
+    { page:'import',      icon:'cloud-arrow-down-fill', label:'Velden importeren', badge:'ArcGIS' },
     { page:'team',        icon:'people-fill',   label:'Team' },
     { page:'instellingen',icon:'gear-fill',     label:'Instellingen' },
   ],
@@ -734,7 +843,7 @@ function showPage(page) {
   const btn=document.querySelector(`.sb-link[onclick="showPage('${page}')"]`);
   if(btn) btn.classList.add('active');
 
-  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',team:'Team',instellingen:'Instellingen'};
+  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',import:'Velden importeren',team:'Team',instellingen:'Instellingen'};
   document.getElementById('pg-title').textContent=titles[page]||page;
   document.getElementById('pg-crumb').textContent=titles[page]||page;
 
@@ -792,8 +901,12 @@ function initCharts() {
     tooltip:{x:{format:'MMMM yyyy'},y:{formatter:v=>v+' mm'}},
     grid:{borderColor:'#f0f0f0'},
     annotations:{yaxis:[
-      {y:120,borderColor:'#f44336',label:{text:'Max grens',style:{color:'#f44336',background:'#ffebee'}}},
-      {y:40, borderColor:'#ff9800',label:{text:'Min grens',style:{color:'#ff9800',background:'#fff3e0'}}},
+      {y:120, borderColor:'#f44336', strokeDashArray:5,
+       label:{text:'Max 120mm', position:'right', textAnchor:'end', offsetX:-6, offsetY:-10,
+              style:{color:'#f44336', background:'#ffebee', fontSize:'10px', fontWeight:600, padding:{left:6,right:6,top:2,bottom:2}}}},
+      {y:40,  borderColor:'#ff9800', strokeDashArray:5,
+       label:{text:'Min 40mm',  position:'right', textAnchor:'end', offsetX:-6, offsetY:-10,
+              style:{color:'#ff9800', background:'#fff3e0', fontSize:'10px', fontWeight:600, padding:{left:6,right:6,top:2,bottom:2}}}},
     ]},
   }).render();
 
@@ -1054,6 +1167,219 @@ function renderTeam(){
     <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0"><i class="bi bi-${a.icon}"></i></div>
     <div><div style="font-size:.82rem;font-weight:600">${a.user}</div><div style="font-size:.81rem;color:#495057">${a.msg}</div><div style="font-size:.74rem;color:#adb5bd">${a.time}</div></div>
   </div>`).join('');
+}
+
+/* ═══════════════════════════════════════
+   ARCGIS IMPORT
+═══════════════════════════════════════ */
+let importFeatures   = [];   // ruwe features van ArcGIS
+let importFields     = [];   // beschikbare attributen
+let importMapped     = {};   // mapping { naam, locatie, hoogte }
+
+function setImportStatus(type, html) {
+  const wrap = document.getElementById('import-status');
+  const inner = document.getElementById('import-status-inner');
+  wrap.style.display = 'block';
+  inner.className = 'import-status-' + type;
+  inner.innerHTML = html;
+}
+
+function resetImport() {
+  importFeatures=[]; importFields=[]; importMapped={};
+  document.getElementById('import-status').style.display='none';
+  document.getElementById('import-mapping-card').style.display='none';
+  document.getElementById('import-preview-card').style.display='none';
+  document.getElementById('import-result').style.display='none';
+}
+
+function testImportVerbinding() {
+  const url = document.getElementById('import-url').value.trim();
+  if (!url) { setImportStatus('err','⚠️ Voer een URL in.'); return; }
+
+  setImportStatus('loading',`<i class="bi bi-arrow-clockwise spin me-2"></i>Verbinding maken met ArcGIS…`);
+  document.getElementById('import-mapping-card').style.display='none';
+  document.getElementById('import-preview-card').style.display='none';
+
+  // Gebruik ArcGIS JS SDK FeatureLayer om de service te bevragen
+  require(['esri/config','esri/layers/FeatureLayer'], function(esriConfig, FeatureLayer) {
+    esriConfig.apiKey = ARCGIS_KEY;
+
+    const layer = new FeatureLayer({ url: url });
+
+    layer.load().then(() => {
+      const attrs = layer.fields.map(f => f.name);
+      importFields = attrs;
+
+      setImportStatus('ok',
+        `<i class="bi bi-check-circle-fill me-2"></i>
+         <strong>Verbinding geslaagd</strong> — Layer: <em>${layer.title||'Onbekend'}</em> &nbsp;|&nbsp;
+         ${attrs.length} attributen gevonden &nbsp;|&nbsp;
+         Geometry: ${layer.geometryType}`
+      );
+
+      bouwMappingUI(attrs);
+      document.getElementById('import-mapping-card').style.display='block';
+
+      // Haal eerste 100 features op
+      layer.queryFeatures({ where:'1=1', outFields:['*'], num:100, returnGeometry:true })
+        .then(result => { importFeatures = result.features; })
+        .catch(() => { importFeatures = []; });
+
+    }).catch(err => {
+      setImportStatus('err',
+        `<i class="bi bi-x-circle-fill me-2"></i>
+         <strong>Verbinding mislukt:</strong> ${err.message||'Onbekende fout'}.<br>
+         <small>Controleer de URL en zorg dat de service openbaar toegankelijk is, of gebruik jouw ArcGIS Portal URL.</small>`
+      );
+    });
+  });
+}
+
+function bouwMappingUI(attrs) {
+  const opts = ['— Niet koppelen —', ...attrs].map(a=>`<option value="${a}">${a}</option>`).join('');
+
+  const autoPick = (candidates) => {
+    const lc = candidates.map(c=>c.toLowerCase());
+    return attrs.find(a => lc.some(c => a.toLowerCase().includes(c))) || '';
+  };
+
+  const mappings = [
+    { key:'naam',     label:'Veldnaam',        icon:'card-text',          hint:'Attribuut dat de naam van het veld bevat', auto:['naam','name','title','omschrijving','label'] },
+    { key:'locatie',  label:'Locatienaam',     icon:'geo',                hint:'Bijv. straatnaam, wijk, park', auto:['locatie','location','adres','adress','straat','gebied','wijk','park'] },
+    { key:'hoogte',   label:'Grashoogte (mm)', icon:'rulers',             hint:'Numeriek attribuut met de meting', auto:['hoogte','height','meting','gras','mm','afstand','distance','maaihoogte'] },
+    { key:'contract', label:'Contractnaam',    icon:'file-earmark-text',  hint:'Optioneel: naam van het contract of opdrachtgever', auto:['contract','klant','client','opdrachtgever','stakeholder'] },
+  ];
+
+  document.getElementById('import-mapping-fields').innerHTML = mappings.map(m => {
+    const best = autoPick(m.auto);
+    const optionsHtml = ['— Niet koppelen —', ...attrs].map(a =>
+      `<option value="${a}" ${a===best?'selected':''}>${a}</option>`
+    ).join('');
+    return `<div class="col-md-6 col-lg-3">
+      <div class="settings-group">
+        <label><i class="bi bi-${m.icon} me-1" style="color:var(--g)"></i>${m.label}</label>
+        <select class="form-select form-select-sm" id="map-${m.key}">${optionsHtml}</select>
+        <div style="font-size:.72rem;color:#adb5bd;margin-top:.3rem">${m.hint}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function laadVooruitblik() {
+  importMapped = {
+    naam:     document.getElementById('map-naam').value,
+    locatie:  document.getElementById('map-locatie').value,
+    hoogte:   document.getElementById('map-hoogte').value,
+    contract: document.getElementById('map-contract').value,
+  };
+
+  if (!importFeatures.length) {
+    // Geen echte features (bijv. CORS) – laat demo-preview zien
+    setImportStatus('loading','<i class="bi bi-arrow-clockwise spin me-2"></i>Features ophalen…');
+    setTimeout(() => {
+      importFeatures = genereerDemoFeatures();
+      toonVooruitblik();
+      setImportStatus('ok','<i class="bi bi-check-circle-fill me-2"></i>Features geladen (demo-modus)');
+    }, 1200);
+  } else {
+    toonVooruitblik();
+  }
+}
+
+function genereerDemoFeatures() {
+  // Gesimuleerde velden die een opdrachtgever in ArcGIS zou zetten
+  return [
+    { attributes:{ FID:101, naam:'Veld A', locatie:'Sportpark Zuid',    hoogte:95,  contract:'Gemeente Demo' }, geometry:{ x:4.910, y:52.355 } },
+    { attributes:{ FID:102, naam:'Veld B', locatie:'Berm Ringweg',      hoogte:138, contract:'Gemeente Demo' }, geometry:{ x:4.925, y:52.368 } },
+    { attributes:{ FID:103, naam:'Veld C', locatie:'Woonwijk Noord',    hoogte:62,  contract:'Sportpark BV'  } , geometry:{ x:4.890, y:52.382 } },
+    { attributes:{ FID:104, naam:'Veld D', locatie:'Schoolplein West',  hoogte:80,  contract:'Sportpark BV'  } , geometry:{ x:4.895, y:52.375 } },
+    { attributes:{ FID:105, naam:'Veld E', locatie:'Gemeentegroen Oost',hoogte:125, contract:'Gemeente Demo' }, geometry:{ x:4.918, y:52.360 } },
+  ];
+}
+
+function toonVooruitblik() {
+  const card = document.getElementById('import-preview-card');
+  card.style.display='block';
+  document.getElementById('import-result').style.display='none';
+
+  const naamAttr    = importMapped.naam    !== '— Niet koppelen —' ? importMapped.naam    : null;
+  const locAttr     = importMapped.locatie !== '— Niet koppelen —' ? importMapped.locatie : null;
+  const hoogteAttr  = importMapped.hoogte  !== '— Niet koppelen —' ? importMapped.hoogte  : null;
+
+  document.getElementById('import-preview-count').textContent = importFeatures.length;
+
+  document.getElementById('import-preview-tbody').innerHTML = importFeatures.map((f,i) => {
+    const attrs   = f.attributes || {};
+    const geom    = f.geometry || {};
+    const naam    = naamAttr    ? (attrs[naamAttr]   || `Veld #${attrs.FID||i}`) : `Veld #${i+1}`;
+    const loc     = locAttr     ? (attrs[locAttr]    || '—') : '—';
+    const hoogte  = hoogteAttr  ? (attrs[hoogteAttr] || '—') : '—';
+    const lat     = geom.y || geom.latitude  || '—';
+    const lng     = geom.x || geom.longitude || '—';
+    const status  = typeof hoogte==='number' ? (hoogte>120?'Hoog':(hoogte<40?'Te laag':'OK')) : 'Onbekend';
+    const bsCls   = {Hoog:'bsh','Te laag':'bsl',OK:'bsok',Onbekend:''}[status]||'';
+    const bestaat = VELDEN.some(v=>v.naam===naam && v.loc===loc);
+
+    return `<tr class="${bestaat?'import-row-exists':''}">
+      <td class="ps-3"><input type="checkbox" class="import-cb" data-idx="${i}" ${bestaat?'':'checked'} /></td>
+      <td class="fw-semibold">${naam}</td>
+      <td>${loc}</td>
+      <td style="font-size:.78rem;color:#adb5bd">${typeof lat==='number'?lat.toFixed(4)+'°N':'—'}, ${typeof lng==='number'?lng.toFixed(4)+'°O':'—'}</td>
+      <td><span class="bs ${bsCls}">${status}</span> ${hoogte!=='—'?`<small class="text-muted">(${hoogte}mm)</small>`:''}</td>
+      <td>${bestaat?'<span class="badge" style="background:#fff3e0;color:#e65100">Al actief</span>':'<span class="badge" style="background:var(--gp);color:var(--g)">Nieuw</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleAlleImport(checked) {
+  document.querySelectorAll('.import-cb').forEach(cb => cb.checked = checked);
+}
+
+function importeerGeselecteerde() {
+  const geselecteerd = [];
+  document.querySelectorAll('.import-cb:checked').forEach(cb => {
+    const idx = parseInt(cb.dataset.idx);
+    geselecteerd.push(importFeatures[idx]);
+  });
+
+  if (!geselecteerd.length) { alert('Selecteer minstens één veld om te importeren.'); return; }
+
+  const naamAttr   = importMapped.naam    !== '— Niet koppelen —' ? importMapped.naam    : null;
+  const locAttr    = importMapped.locatie !== '— Niet koppelen —' ? importMapped.locatie : null;
+  const hoogteAttr = importMapped.hoogte  !== '— Niet koppelen —' ? importMapped.hoogte  : null;
+
+  let nieuw=0, skip=0;
+  geselecteerd.forEach((f,i) => {
+    const attrs  = f.attributes || {};
+    const geom   = f.geometry   || {};
+    const naam   = naamAttr   ? (attrs[naamAttr]   || `Veld #${attrs.FID||i}`) : `Veld #${i+1}`;
+    const loc    = locAttr    ? (attrs[locAttr]    || '—') : '—';
+    const hoogte = hoogteAttr ? (parseInt(attrs[hoogteAttr]) || 80) : 80;
+    const lat    = geom.y || geom.latitude  || 52.37;
+    const lng    = geom.x || geom.longitude || 4.90;
+    const status = hoogte>120?'Hoog':(hoogte<40?'Te laag':'OK');
+    const prio   = hoogte>120?'Hoog':(hoogte<70?'Middel':'Laag');
+
+    if (VELDEN.some(v=>v.naam===naam && v.loc===loc)) { skip++; return; }
+
+    const nextId = Math.max(...VELDEN.map(v=>v.id)) + nieuw + 1;
+    VELDEN.push({ id:nextId, naam, loc, lat, lng, hoogte, status, prio, machinist:'—' });
+    nieuw++;
+  });
+
+  // Update sidebar badge
+  document.querySelectorAll('.sb-badge').forEach(b => {
+    if(b.textContent === String(VELDEN.length - nieuw)) b.textContent = String(VELDEN.length);
+  });
+
+  const resDiv = document.getElementById('import-result');
+  resDiv.style.display='block';
+  resDiv.querySelector('.alert').innerHTML =
+    `✅ <strong>${nieuw} veld${nieuw!==1?'en':''} geïmporteerd</strong>${skip?` &nbsp;|&nbsp; ${skip} overgeslagen (al actief)`:''}.
+     De velden staan nu in het dashboard. <a href="#" onclick="showPage('velden');return false">Bekijk veldenlijst →</a>`;
+
+  // Herlaad de preview-tabel zodat de "Al actief" badges bijwerken
+  toonVooruitblik();
 }
 
 /* ═══════════════════════════════════════
