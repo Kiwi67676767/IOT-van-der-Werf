@@ -9,7 +9,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist')
 
 # Database instellen via Railway's DATABASE_URL
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', '').replace('postgres://', 'postgresql://')
+database_url = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_PUBLIC_URL', '')
+database_url = database_url.replace('postgres://', 'postgresql://')
+if not database_url:
+    raise RuntimeError("DATABASE_URL is niet ingesteld! Koppel de PostgreSQL plugin aan je Railway service.")
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
