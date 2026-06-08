@@ -4,505 +4,364 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Van der Werf | Dashboard</title>
-
-  <!-- Bootstrap 5 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
-  <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
-  <!-- ArcGIS Maps SDK -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
-  <!-- ApexCharts -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.css" crossorigin="anonymous" />
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --vdw-green:        #2e7d32;
-      --vdw-green-dark:   #1b5e20;
-      --vdw-green-mid:    #388e3c;
-      --vdw-green-light:  #4caf50;
-      --vdw-green-pale:   #e8f5e9;
-      --vdw-accent:       #66bb6a;
-      --sidebar-w:        260px;
+      --g:    #2e7d32;
+      --gd:   #1b5e20;
+      --gm:   #388e3c;
+      --gl:   #4caf50;
+      --gp:   #e8f5e9;
+      --acc:  #66bb6a;
+      --sw:   260px;
     }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f4f6f4; margin: 0; overflow-x: hidden; }
 
-    * { box-sizing: border-box; }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #f4f6f4;
-      margin: 0;
-      overflow-x: hidden;
-    }
-
-    /* ───── LOGIN ───── */
+    /* ── LOGIN ── */
     #login-screen {
       position: fixed; inset: 0; z-index: 9999;
-      background: linear-gradient(135deg, var(--vdw-green-dark) 0%, var(--vdw-green) 50%, var(--vdw-green-light) 100%);
+      background: linear-gradient(135deg, var(--gd) 0%, var(--g) 55%, var(--gl) 100%);
       display: flex; align-items: center; justify-content: center;
     }
-    .login-card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 2.5rem 2.2rem;
-      width: 100%; max-width: 400px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    .lcard {
+      background: #fff; border-radius: 18px; padding: 2.5rem 2.2rem;
+      width: 100%; max-width: 410px; box-shadow: 0 24px 64px rgba(0,0,0,.28);
     }
-    .login-logo {
-      width: 64px; height: 64px;
-      background: var(--vdw-green);
-      border-radius: 50%;
+    .lcard-logo {
+      width: 68px; height: 68px; background: var(--g); border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 1rem;
-      color: #fff; font-size: 1.8rem;
+      margin: 0 auto 1rem; color: #fff; font-size: 2rem;
     }
-    .login-card h2 { color: var(--vdw-green-dark); text-align: center; font-weight: 700; margin-bottom: .25rem; }
-    .login-card p.sub { color: #6c757d; text-align: center; font-size: .85rem; margin-bottom: 1.5rem; }
-    .login-card .form-control:focus { border-color: var(--vdw-green); box-shadow: 0 0 0 .2rem rgba(46,125,50,.2); }
-    .btn-login {
-      background: var(--vdw-green); color: #fff; border: none;
-      width: 100%; padding: .75rem; border-radius: 8px; font-weight: 600; font-size: 1rem;
+    .lcard h2 { color: var(--gd); text-align: center; font-weight: 700; margin-bottom: .2rem; }
+    .lcard .sub { color: #6c757d; text-align: center; font-size: .84rem; margin-bottom: 1.6rem; }
+    .lcard .form-control:focus { border-color: var(--g); box-shadow: 0 0 0 .2rem rgba(46,125,50,.2); }
+    .btn-lgi {
+      background: var(--g); color: #fff; border: none; width: 100%;
+      padding: .75rem; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer;
       transition: background .2s;
     }
-    .btn-login:hover { background: var(--vdw-green-dark); color: #fff; }
-    .login-error { color: #dc3545; font-size: .85rem; text-align: center; margin-top: .75rem; display: none; }
-    .login-hint { color: #adb5bd; font-size: .78rem; text-align: center; margin-top: 1rem; }
+    .btn-lgi:hover { background: var(--gd); }
+    #login-error { color: #dc3545; font-size: .84rem; text-align: center; margin-top: .6rem; display: none; }
+    .lcard-hint { color: #adb5bd; font-size: .76rem; text-align: center; margin-top: 1rem; line-height: 1.7; }
+    .role-chips { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.2rem; }
+    .role-chip {
+      background: var(--gp); color: var(--g); font-size: .72rem; font-weight: 600;
+      padding: .25rem .75rem; border-radius: 20px; cursor: pointer; border: 1.5px solid transparent;
+      transition: border-color .15s;
+    }
+    .role-chip:hover { border-color: var(--g); }
 
-    /* ───── SIDEBAR ───── */
+    /* ── SIDEBAR ── */
     #sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0;
-      width: var(--sidebar-w);
-      background: linear-gradient(180deg, var(--vdw-green-dark) 0%, var(--vdw-green) 100%);
-      z-index: 100;
-      display: flex; flex-direction: column;
-      box-shadow: 4px 0 16px rgba(0,0,0,.15);
-      transition: transform .3s;
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sw);
+      background: linear-gradient(180deg, var(--gd) 0%, var(--g) 100%);
+      z-index: 100; display: flex; flex-direction: column;
+      box-shadow: 4px 0 20px rgba(0,0,0,.18); transition: transform .3s;
     }
-    .sidebar-brand {
-      padding: 1.4rem 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,.1);
+    .sb-brand {
+      padding: 1.3rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.1);
       display: flex; align-items: center; gap: .75rem;
     }
-    .sidebar-brand-icon {
-      width: 40px; height: 40px; background: rgba(255,255,255,.15);
-      border-radius: 10px; display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 1.1rem; flex-shrink: 0;
+    .sb-brand-icon {
+      width: 40px; height: 40px; background: rgba(255,255,255,.15); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; flex-shrink: 0;
     }
-    .sidebar-brand-text { color: #fff; font-weight: 700; font-size: .95rem; line-height: 1.2; }
-    .sidebar-brand-text small { font-weight: 300; font-size: .75rem; opacity: .8; display: block; }
-
-    .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0; }
-    .sidebar-section-title {
-      color: rgba(255,255,255,.5); font-size: .68rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: .08em;
-      padding: .5rem 1.2rem .25rem; margin-top: .5rem;
+    .sb-brand-text { color: #fff; font-weight: 700; font-size: .95rem; line-height: 1.2; }
+    .sb-brand-text small { font-weight: 300; font-size: .73rem; opacity: .8; display: block; }
+    .sb-nav { flex: 1; overflow-y: auto; padding: .8rem 0; }
+    .sb-nav::-webkit-scrollbar { width: 3px; }
+    .sb-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 2px; }
+    .sb-sec { color: rgba(255,255,255,.45); font-size: .67rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .08em; padding: .6rem 1.2rem .2rem; margin-top: .4rem; }
+    .sb-link {
+      display: flex; align-items: center; gap: .75rem; padding: .62rem 1.2rem;
+      color: rgba(255,255,255,.8); text-decoration: none; font-size: .875rem; font-weight: 500;
+      border: none; background: transparent; width: 100%; text-align: left; cursor: pointer;
+      transition: background .15s, color .15s; border-left: 3px solid transparent;
     }
-    .sidebar-link {
-      display: flex; align-items: center; gap: .75rem;
-      padding: .65rem 1.2rem;
-      color: rgba(255,255,255,.8); text-decoration: none;
-      font-size: .88rem; font-weight: 500;
-      border-radius: 0; cursor: pointer;
-      transition: background .15s, color .15s;
-      border: none; background: transparent; width: 100%; text-align: left;
-    }
-    .sidebar-link i { font-size: 1rem; width: 20px; flex-shrink: 0; }
-    .sidebar-link:hover, .sidebar-link.active {
-      background: rgba(255,255,255,.15); color: #fff;
-    }
-    .sidebar-link.active { border-left: 3px solid var(--vdw-accent); padding-left: calc(1.2rem - 3px); }
-    .sidebar-badge {
-      margin-left: auto; background: rgba(255,255,255,.2);
-      color: #fff; font-size: .7rem; padding: .15rem .5rem;
-      border-radius: 20px; font-weight: 600;
-    }
-
-    .sidebar-user {
-      padding: 1rem 1.2rem;
-      border-top: 1px solid rgba(255,255,255,.1);
+    .sb-link i { font-size: .95rem; width: 20px; flex-shrink: 0; }
+    .sb-link:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .sb-link.active { background: rgba(255,255,255,.18); color: #fff; border-left-color: var(--acc); padding-left: calc(1.2rem - 3px); }
+    .sb-badge { margin-left: auto; background: rgba(255,255,255,.18); color: #fff; font-size: .68rem; padding: .12rem .5rem; border-radius: 20px; font-weight: 600; }
+    .sb-user {
+      padding: .9rem 1.2rem; border-top: 1px solid rgba(255,255,255,.1);
       display: flex; align-items: center; gap: .75rem;
     }
-    .sidebar-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: rgba(255,255,255,.2);
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: .85rem; font-weight: 600; flex-shrink: 0;
+    .sb-avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: .82rem; font-weight: 700; flex-shrink: 0;
     }
-    .sidebar-user-info { flex: 1; min-width: 0; }
-    .sidebar-user-info .name { color: #fff; font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sidebar-user-info .role { color: rgba(255,255,255,.6); font-size: .72rem; }
-    .btn-logout { color: rgba(255,255,255,.7); border: none; background: transparent; cursor: pointer; font-size: 1rem; padding: .2rem; }
-    .btn-logout:hover { color: #fff; }
+    .sb-uinfo { flex: 1; min-width: 0; }
+    .sb-uinfo .n { color: #fff; font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-uinfo .r { color: rgba(255,255,255,.55); font-size: .7rem; }
+    .btn-out { color: rgba(255,255,255,.7); border: none; background: transparent; cursor: pointer; font-size: .95rem; padding: .2rem; }
+    .btn-out:hover { color: #fff; }
 
-    /* ───── MAIN LAYOUT ───── */
+    /* ── LAYOUT ── */
     #app { display: none; min-height: 100vh; }
-    #main-content { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
-
-    /* ───── TOPBAR ───── */
+    #main { margin-left: var(--sw); min-height: 100vh; display: flex; flex-direction: column; }
     #topbar {
-      background: #fff;
-      border-bottom: 1px solid #e9ecef;
-      padding: .75rem 1.5rem;
-      display: flex; align-items: center; gap: 1rem;
-      position: sticky; top: 0; z-index: 50;
+      background: #fff; border-bottom: 1px solid #e9ecef; padding: .7rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 50;
       box-shadow: 0 1px 4px rgba(0,0,0,.06);
     }
-    #topbar h4 { margin: 0; font-weight: 700; color: var(--vdw-green-dark); flex: 1; }
-    .topbar-breadcrumb { font-size: .8rem; color: #adb5bd; }
-    .topbar-breadcrumb span { color: var(--vdw-green); font-weight: 500; }
+    #topbar h4 { margin: 0; font-weight: 700; color: var(--gd); flex: 1; font-size: 1.1rem; }
+    .tb-bc { font-size: .78rem; color: #adb5bd; }
+    .tb-bc span { color: var(--g); font-weight: 500; }
+    .ca { padding: 1.4rem; flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
 
-    /* ───── CONTENT ───── */
-    .content-area { padding: 1.5rem; flex: 1; }
-
-    /* ───── STAT CARDS ───── */
-    .stat-card {
-      background: #fff; border-radius: 12px;
-      padding: 1.2rem 1.4rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-      border-left: 4px solid var(--vdw-green);
-      transition: box-shadow .2s;
+    /* ── CARDS ── */
+    .dc { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 1.2rem; }
+    .dch {
+      padding: .9rem 1.2rem .7rem; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: .6rem;
     }
-    .stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
-    .stat-card .label { font-size: .78rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-    .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--vdw-green-dark); line-height: 1; margin: .3rem 0; }
-    .stat-card .sub { font-size: .78rem; color: #6c757d; }
-    .stat-card .icon {
-      width: 44px; height: 44px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem;
+    .dch h6 { margin: 0; font-weight: 700; color: #1a1a2e; font-size: .88rem; flex: 1; }
+    .dcb { padding: 1.2rem; }
+
+    /* ── STAT CARDS ── */
+    .sc {
+      background: #fff; border-radius: 12px; padding: 1.1rem 1.3rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.07); border-left: 4px solid var(--g);
+      display: flex; align-items: center; gap: 1rem;
     }
-    .stat-card.green  { border-left-color: var(--vdw-green);   } .stat-card.green  .icon { background: var(--vdw-green-pale); color: var(--vdw-green); }
-    .stat-card.orange { border-left-color: #ff9800; } .stat-card.orange .icon { background: #fff3e0; color: #ff9800; }
-    .stat-card.red    { border-left-color: #f44336; } .stat-card.red    .icon { background: #ffebee; color: #f44336; }
-    .stat-card.blue   { border-left-color: #2196f3; } .stat-card.blue   .icon { background: #e3f2fd; color: #2196f3; }
+    .sc .ic { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+    .sc .lbl { font-size: .72rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .sc .val { font-size: 1.9rem; font-weight: 700; color: var(--gd); line-height: 1; margin: .2rem 0; }
+    .sc .sub { font-size: .75rem; color: #adb5bd; }
+    .sc.g  { border-left-color: var(--g);   } .sc.g  .ic { background: var(--gp); color: var(--g); }
+    .sc.r  { border-left-color: #f44336; }    .sc.r  .ic { background: #ffebee; color: #f44336; }
+    .sc.o  { border-left-color: #ff9800; }    .sc.o  .ic { background: #fff3e0; color: #ff9800; }
+    .sc.b  { border-left-color: #2196f3; }    .sc.b  .ic { background: #e3f2fd; color: #2196f3; }
+    .sc.pu { border-left-color: #9c27b0; }    .sc.pu .ic { background: #f3e5f5; color: #9c27b0; }
 
-    /* ───── CARDS ───── */
-    .dash-card {
-      background: #fff; border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-      margin-bottom: 1.25rem;
+    /* ── BADGES ── */
+    .bs { font-size: .71rem; font-weight: 600; padding: .28em .7em; border-radius: 20px; white-space: nowrap; }
+    .bsh  { background: #ffebee; color: #c62828; }
+    .bsl  { background: #fff3e0; color: #e65100; }
+    .bsok { background: #e8f5e9; color: #2e7d32; }
+    .bsb  { background: #e3f2fd; color: #1565c0; }
+    .bsgm { background: #f3e5f5; color: #6a1b9a; }
+
+    /* ── PROGRESS ── */
+    .pg { margin-bottom: .9rem; }
+    .pg .pl { display: flex; justify-content: space-between; font-size: .81rem; margin-bottom: .3rem; color: #495057; font-weight: 500; }
+    .progress { height: 7px; border-radius: 4px; background: #f0f0f0; }
+
+    /* ── MAP ── */
+    #arcgis-map { height: 420px; border-radius: 0 0 12px 12px; overflow: hidden; }
+
+    /* ── ROUTE CARD ── */
+    .route-item {
+      display: flex; align-items: flex-start; gap: 1rem; padding: .9rem 0;
+      border-bottom: 1px solid #f5f5f5;
     }
-    .dash-card-header {
-      padding: 1rem 1.2rem .75rem;
-      border-bottom: 1px solid #f0f0f0;
-      display: flex; align-items: center; gap: .5rem;
+    .route-item:last-child { border-bottom: none; }
+    .route-num {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--g); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0;
     }
-    .dash-card-header h6 { margin: 0; font-weight: 700; color: #1a1a2e; font-size: .9rem; flex: 1; }
-    .dash-card-body { padding: 1.2rem; }
+    .route-num.urgent { background: #f44336; }
+    .route-num.medium { background: #ff9800; }
+    .route-num.done   { background: #9e9e9e; }
+    .route-info { flex: 1; }
+    .route-name { font-weight: 600; font-size: .88rem; color: #1a1a2e; }
+    .route-sub  { font-size: .78rem; color: #6c757d; margin-top: .15rem; }
+    .route-hoogte { font-size: 1.1rem; font-weight: 700; }
 
-    /* ───── FIELDS LIST ───── */
-    .field-item {
-      display: flex; align-items: center; gap: .75rem;
-      padding: .75rem 0; border-bottom: 1px solid #f5f5f5;
+    /* ── SENSOR BUTTON ── */
+    .btn-meting {
+      background: linear-gradient(135deg, var(--g), var(--gl));
+      color: #fff; border: none; border-radius: 12px;
+      padding: 1rem 2rem; font-size: 1.05rem; font-weight: 700;
+      cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: .75rem;
+      box-shadow: 0 4px 14px rgba(46,125,50,.35); transition: transform .15s, box-shadow .15s;
     }
-    .field-item:last-child { border-bottom: none; }
-    .field-icon {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: var(--vdw-green-pale); color: var(--vdw-green);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem; flex-shrink: 0;
+    .btn-meting:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(46,125,50,.45); }
+    .btn-meting.active-meting { background: linear-gradient(135deg, #f44336, #ef5350); box-shadow: 0 4px 14px rgba(244,67,54,.35); }
+    .pulse { animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── SENSOR STATUS ── */
+    .sensor-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .sensor-dot.on  { background: var(--gl); animation: pulse 1s infinite; }
+    .sensor-dot.off { background: #ccc; }
+
+    /* ── CONTRACT ── */
+    .contract-meter {
+      border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .8rem;
+      border: 2px solid #e9ecef;
     }
-    .field-info { flex: 1; min-width: 0; }
-    .field-name { font-weight: 600; font-size: .88rem; color: #1a1a2e; }
-    .field-coord { font-size: .75rem; color: #adb5bd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .contract-meter.compliant   { border-color: var(--gl); background: #f9fef9; }
+    .contract-meter.warning     { border-color: #ff9800;   background: #fffdf5; }
+    .contract-meter.violation   { border-color: #f44336;   background: #fff9f9; }
 
-    /* ───── PROGRESS ───── */
-    .prog-group { margin-bottom: 1rem; }
-    .prog-label { display: flex; justify-content: space-between; font-size: .82rem; margin-bottom: .3rem; color: #495057; font-weight: 500; }
-    .progress { height: 8px; border-radius: 4px; background: #f0f0f0; }
+    /* ── FIELD LIST ── */
+    .fi { display: flex; align-items: center; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid #f5f5f5; }
+    .fi:last-child { border-bottom: none; }
+    .fi-ic { width: 36px; height: 36px; border-radius: 9px; background: var(--gp); color: var(--g); display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; }
+    .fi-info { flex: 1; min-width: 0; }
+    .fi-name { font-weight: 600; font-size: .86rem; color: #1a1a2e; }
+    .fi-sub  { font-size: .74rem; color: #adb5bd; }
 
-    /* ───── MAP ───── */
-    #arcgis-map { height: 400px; border-radius: 0 0 12px 12px; overflow: hidden; }
+    /* ── LEGEND ── */
+    .ld { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 
-    /* ───── LEGEND ───── */
-    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    /* ── TABLE ── */
+    th { font-size: .78rem !important; font-weight: 600 !important; }
+    td { font-size: .84rem; vertical-align: middle !important; }
 
-    /* ───── PAGE SECTIONS ───── */
-    .page-section { display: none; }
-    .page-section.active { display: block; }
-
-    /* ───── BADGE STATUS ───── */
-    .badge-status { font-size: .72rem; font-weight: 600; padding: .3em .7em; border-radius: 20px; }
-    .badge-hoog   { background: #ffebee; color: #c62828; }
-    .badge-laag   { background: #fff3e0; color: #e65100; }
-    .badge-ok     { background: #e8f5e9; color: #2e7d32; }
-    .badge-bezig  { background: #e3f2fd; color: #1565c0; }
-
-    /* ───── MOBILE ───── */
+    /* ── MOBILE ── */
     @media (max-width: 768px) {
       #sidebar { transform: translateX(-100%); }
       #sidebar.open { transform: translateX(0); }
-      #main-content { margin-left: 0; }
-      .sidebar-toggle-btn { display: flex !important; }
+      #main { margin-left: 0; }
+      .mob-show { display: flex !important; }
     }
-    .sidebar-toggle-btn { display: none; }
+    .mob-show { display: none; }
 
-    /* ───── CHART CONTAINER ───── */
-    #sales-chart, #pie-chart { min-height: 220px; }
+    footer { padding: .7rem 1.5rem; border-top: 1px solid #e9ecef; background: #fff; font-size: .76rem; color: #adb5bd; }
 
-    /* ───── SCROLLBAR ───── */
-    .sidebar-nav::-webkit-scrollbar { width: 4px; }
-    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 2px; }
+    /* ── SETTINGS FIX ── */
+    .settings-group { background: #f8f9fa; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .settings-group label { font-size: .83rem; font-weight: 600; color: #495057; display: block; margin-bottom: .4rem; }
+    .settings-group input.form-control { max-width: 160px; }
+    .settings-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .settings-unit { font-size: .82rem; color: #6c757d; }
   </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════
-     LOGIN SCHERM
-═══════════════════════════════════════════════ -->
+<!-- ═══════════ LOGIN ═══════════ -->
 <div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo"><i class="bi bi-flower2"></i></div>
+  <div class="lcard">
+    <div class="lcard-logo"><i class="bi bi-flower2"></i></div>
     <h2>Van der Werf</h2>
     <p class="sub">Groenvoorzieningen &mdash; Dashboard</p>
 
-    <form id="login-form" onsubmit="doLogin(event)">
+    <div class="role-chips">
+      <span class="role-chip" onclick="fillDemo('admin','admin789')">🔧 Admin</span>
+      <span class="role-chip" onclick="fillDemo('machinist1','groen123')">🚜 Machinist</span>
+      <span class="role-chip" onclick="fillDemo('stakeholder1','stake123')">📋 Stakeholder</span>
+    </div>
+
+    <form onsubmit="doLogin(event)">
       <div class="mb-3">
-        <label class="form-label fw-semibold" style="font-size:.85rem">Gebruikersnaam</label>
+        <label class="form-label fw-semibold" style="font-size:.83rem">Gebruikersnaam</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-person"></i></span>
-          <input id="inp-user" type="text" class="form-control" placeholder="bijv. machinist1" autocomplete="username" />
+          <input id="u" type="text" class="form-control" placeholder="bijv. machinist1" />
         </div>
       </div>
       <div class="mb-3">
-        <label class="form-label fw-semibold" style="font-size:.85rem">Wachtwoord</label>
+        <label class="form-label fw-semibold" style="font-size:.83rem">Wachtwoord</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-lock"></i></span>
-          <input id="inp-pass" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password" />
-          <button class="btn btn-outline-secondary" type="button" onclick="togglePass()"><i class="bi bi-eye" id="eye-icon"></i></button>
+          <input id="p" type="password" class="form-control" placeholder="••••••••" />
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePass()"><i class="bi bi-eye" id="eye-ic"></i></button>
         </div>
       </div>
-      <button class="btn-login" type="submit">Inloggen</button>
-      <div class="login-error" id="login-error">Verkeerde gebruikersnaam of wachtwoord</div>
+      <button class="btn-lgi" type="submit">Inloggen</button>
+      <div id="login-error">Verkeerde gebruikersnaam of wachtwoord</div>
     </form>
-    <p class="login-hint">Demo: <strong>machinist1</strong> / <strong>groen123</strong></p>
+    <p class="lcard-hint">
+      admin / admin789 &nbsp;|&nbsp; machinist1 / groen123 &nbsp;|&nbsp; machinist2 / groen456<br>
+      stakeholder1 / stake123 &nbsp;|&nbsp; stakeholder2 / stake456
+    </p>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     APP WRAPPER
-═══════════════════════════════════════════════ -->
+<!-- ═══════════ APP ═══════════ -->
 <div id="app">
 
-  <!-- ── SIDEBAR ── -->
+  <!-- SIDEBAR -->
   <aside id="sidebar">
-    <div class="sidebar-brand">
-      <div class="sidebar-brand-icon"><i class="bi bi-flower2"></i></div>
-      <div class="sidebar-brand-text">
-        Van der Werf
-        <small>Groenvoorzieningen</small>
-      </div>
+    <div class="sb-brand">
+      <div class="sb-brand-icon"><i class="bi bi-flower2"></i></div>
+      <div class="sb-brand-text">Van der Werf <small>Groenvoorzieningen</small></div>
     </div>
-
-    <nav class="sidebar-nav">
-      <div class="sidebar-section-title">Hoofdmenu</div>
-      <button class="sidebar-link active" onclick="showPage('dashboard')">
-        <i class="bi bi-grid-1x2-fill"></i> Dashboard
-      </button>
-      <button class="sidebar-link" onclick="showPage('kaart')">
-        <i class="bi bi-map-fill"></i> Kaart
-        <span class="sidebar-badge">Live</span>
-      </button>
-      <button class="sidebar-link" onclick="showPage('velden')">
-        <i class="bi bi-list-check"></i> Velden
-        <span class="sidebar-badge" id="sb-velden-count">9</span>
-      </button>
-
-      <div class="sidebar-section-title">Beheer</div>
-      <button class="sidebar-link" onclick="showPage('team')">
-        <i class="bi bi-people-fill"></i> Team
-      </button>
-      <button class="sidebar-link" onclick="showPage('instellingen')">
-        <i class="bi bi-gear-fill"></i> Instellingen
-      </button>
-    </nav>
-
-    <div class="sidebar-user">
-      <div class="sidebar-avatar" id="sb-avatar">M1</div>
-      <div class="sidebar-user-info">
-        <div class="name" id="sb-username">Machinist 1</div>
-        <div class="role" id="sb-role">Medewerker</div>
+    <nav class="sb-nav" id="sb-nav-content"></nav>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-av">??</div>
+      <div class="sb-uinfo">
+        <div class="n" id="sb-name">—</div>
+        <div class="r" id="sb-role">—</div>
       </div>
-      <button class="btn-logout" title="Uitloggen" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i></button>
+      <button class="btn-out" title="Uitloggen" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i></button>
     </div>
   </aside>
 
-  <!-- ── MAIN ── -->
-  <div id="main-content">
-    <!-- Topbar -->
+  <!-- MAIN -->
+  <div id="main">
     <div id="topbar">
-      <button class="btn sidebar-toggle-btn p-1" onclick="toggleSidebar()" style="display:none">
-        <i class="bi bi-list fs-4" style="color:var(--vdw-green)"></i>
-      </button>
+      <button class="btn mob-show p-1" onclick="toggleSidebar()"><i class="bi bi-list fs-4" style="color:var(--g)"></i></button>
       <div>
-        <h4 id="page-title">Dashboard</h4>
-        <div class="topbar-breadcrumb">Home &rsaquo; <span id="page-crumb">Overzicht</span></div>
+        <h4 id="pg-title">Dashboard</h4>
+        <div class="tb-bc">Home &rsaquo; <span id="pg-crumb">Overzicht</span></div>
       </div>
       <div class="ms-auto d-flex align-items-center gap-2">
-        <span class="badge rounded-pill" style="background:var(--vdw-green-pale);color:var(--vdw-green);font-size:.78rem">
-          <i class="bi bi-circle-fill me-1" style="font-size:.45rem"></i>Live
+        <span id="sensor-indicator" class="d-none">
+          <span class="sensor-dot off" id="s-dot"></span>
+          <span id="s-label" style="font-size:.78rem;color:#6c757d;margin-left:4px">Sensor inactief</span>
         </span>
-        <span class="text-muted" style="font-size:.8rem" id="topbar-time"></span>
+        <span class="badge rounded-pill" style="background:var(--gp);color:var(--g);font-size:.76rem">
+          <i class="bi bi-circle-fill me-1" style="font-size:.4rem"></i>Live
+        </span>
+        <span class="text-muted" style="font-size:.78rem" id="tb-time"></span>
       </div>
     </div>
 
-    <!-- Content -->
-    <div class="content-area">
+    <div class="ca">
 
-      <!-- ══ DASHBOARD PAGE ══ -->
-      <div id="page-dashboard" class="page-section active">
-
-        <!-- Stat cards -->
+      <!-- ══ ADMIN / DASHBOARD ══ -->
+      <div id="page-dashboard" class="page">
         <div class="row g-3 mb-4">
-          <div class="col-6 col-md-3">
-            <div class="stat-card green d-flex align-items-center gap-3">
-              <div class="icon"><i class="bi bi-check2-circle"></i></div>
-              <div>
-                <div class="label">Gemaaid</div>
-                <div class="value">12</div>
-                <div class="sub">velden vandaag</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stat-card red d-flex align-items-center gap-3">
-              <div class="icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
-              <div>
-                <div class="label">Te hoog</div>
-                <div class="value">4</div>
-                <div class="sub">velden urgent</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stat-card orange d-flex align-items-center gap-3">
-              <div class="icon"><i class="bi bi-hourglass-split"></i></div>
-              <div>
-                <div class="label">In uitvoering</div>
-                <div class="value">3</div>
-                <div class="sub">actieve machinisten</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stat-card blue d-flex align-items-center gap-3">
-              <div class="icon"><i class="bi bi-rulers"></i></div>
-              <div>
-                <div class="label">Gem. hoogte</div>
-                <div class="value">82<span style="font-size:1rem">mm</span></div>
-                <div class="sub">huidig gemiddeld</div>
-              </div>
-            </div>
-          </div>
+          <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-check2-circle"></i></div><div><div class="lbl">Gemaaid</div><div class="val">12</div><div class="sub">velden vandaag</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">4</div><div class="sub">urgent</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc o"><div class="ic"><i class="bi bi-hourglass-split"></i></div><div><div class="lbl">In uitvoering</div><div class="val">3</div><div class="sub">actieve machinisten</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gem. hoogte</div><div class="val">82<span style="font-size:.95rem">mm</span></div><div class="sub">huidig gemiddeld</div></div></div></div>
         </div>
-
         <div class="row g-3">
-          <!-- Chart + progress -->
           <div class="col-md-8">
-            <div class="dash-card">
-              <div class="dash-card-header">
-                <i class="bi bi-activity" style="color:var(--vdw-green)"></i>
-                <h6>Grashoogte in mm</h6>
-                <div class="d-flex gap-3 ms-auto" style="font-size:.78rem">
-                  <span><span class="legend-dot" style="background:#2e7d32"></span>Na maaien</span>
-                  <span><span class="legend-dot" style="background:#66bb6a"></span>Gewenst</span>
+            <div class="dc">
+              <div class="dch">
+                <i class="bi bi-activity" style="color:var(--g)"></i>
+                <h6>Grashoogte in mm — Seizoensoverzicht</h6>
+                <div class="ms-auto d-flex gap-3" style="font-size:.76rem">
+                  <span><span class="ld" style="background:#2e7d32"></span>Na maaien</span>
+                  <span><span class="ld" style="background:#a5d6a7"></span>Gewenst (80mm)</span>
                 </div>
               </div>
-              <div class="dash-card-body">
-                <div id="sales-chart"></div>
-              </div>
+              <div class="dcb"><div id="sales-chart"></div></div>
             </div>
-
-            <div class="dash-card">
-              <div class="dash-card-header">
-                <i class="bi bi-bar-chart-fill" style="color:var(--vdw-green)"></i>
-                <h6>Doelstellingen</h6>
-              </div>
-              <div class="dash-card-body">
-                <div class="prog-group">
-                  <div class="prog-label"><span>Gemaaide velden</span><span><b>12</b>/20</span></div>
-                  <div class="progress"><div class="progress-bar" style="width:60%;background:var(--vdw-green)"></div></div>
-                </div>
-                <div class="prog-group">
-                  <div class="prog-label"><span>Gras te hoog (&gt;120mm)</span><span><b>4</b>/20</span></div>
-                  <div class="progress"><div class="progress-bar" style="width:20%;background:#f44336"></div></div>
-                </div>
-                <div class="prog-group">
-                  <div class="prog-label"><span>Gras op gewenste hoogte</span><span><b>9</b>/20</span></div>
-                  <div class="progress"><div class="progress-bar" style="width:45%;background:#4caf50"></div></div>
-                </div>
-                <div class="prog-group">
-                  <div class="prog-label"><span>Gras te laag (&lt;40mm)</span><span><b>3</b>/20</span></div>
-                  <div class="progress"><div class="progress-bar" style="width:15%;background:#ff9800"></div></div>
-                </div>
+            <div class="dc">
+              <div class="dch"><i class="bi bi-bar-chart-fill" style="color:var(--g)"></i><h6>Doelstellingen</h6></div>
+              <div class="dcb">
+                <div class="pg"><div class="pl"><span>Gemaaide velden</span><span><b>12</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:60%;background:var(--g)"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gras te hoog (&gt;120mm)</span><span><b>4</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:20%;background:#f44336"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gras op gewenste hoogte</span><span><b>9</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:45%;background:#4caf50"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gras te laag (&lt;40mm)</span><span><b>3</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:15%;background:#ff9800"></div></div></div>
               </div>
             </div>
           </div>
-
-          <!-- Donut + velden -->
           <div class="col-md-4">
-            <div class="dash-card mb-3">
-              <div class="dash-card-header">
-                <i class="bi bi-pie-chart-fill" style="color:var(--vdw-green)"></i>
-                <h6>Voortgang vandaag</h6>
-              </div>
-              <div class="dash-card-body p-0">
-                <div id="pie-chart"></div>
-              </div>
+            <div class="dc mb-3">
+              <div class="dch"><i class="bi bi-pie-chart-fill" style="color:var(--g)"></i><h6>Voortgang vandaag</h6></div>
+              <div><div id="pie-chart"></div></div>
             </div>
-
-            <div class="dash-card">
-              <div class="dash-card-header">
-                <i class="bi bi-scissors" style="color:var(--vdw-green)"></i>
-                <h6>Velden te maaien</h6>
-              </div>
-              <div class="dash-card-body pt-0">
-                <div class="field-item">
-                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                  <div class="field-info">
-                    <div class="field-name">Veld 9 &mdash; Sportpark Noord</div>
-                    <div class="field-coord">52.3702° N, 4.8952° O</div>
-                  </div>
-                  <span class="badge-status badge-hoog">Hoog</span>
-                </div>
-                <div class="field-item">
-                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                  <div class="field-info">
-                    <div class="field-name">Veld 3 &mdash; Gemeentepark</div>
-                    <div class="field-coord">52.3750° N, 4.9000° O</div>
-                  </div>
-                  <span class="badge-status badge-hoog">Hoog</span>
-                </div>
-                <div class="field-item">
-                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                  <div class="field-info">
-                    <div class="field-name">Veld 4 &mdash; Berm A9</div>
-                    <div class="field-coord">52.3680° N, 4.9100° O</div>
-                  </div>
-                  <span class="badge-status badge-bezig">In uitvoering</span>
-                </div>
-                <div class="field-item">
-                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                  <div class="field-info">
-                    <div class="field-name">Veld 8 &mdash; Bedrijventerrein</div>
-                    <div class="field-coord">52.3600° N, 4.9050° O</div>
-                  </div>
-                  <span class="badge-status badge-laag">Te laag</span>
-                </div>
-                <div class="field-item">
-                  <div class="field-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                  <div class="field-info">
-                    <div class="field-name">Veld 12 &mdash; Woonwijk Oost</div>
-                    <div class="field-coord">52.3720° N, 4.8870° O</div>
-                  </div>
-                  <span class="badge-status badge-ok">OK</span>
-                </div>
-              </div>
+            <div class="dc">
+              <div class="dch"><i class="bi bi-scissors" style="color:var(--g)"></i><h6>Prioriteit velden</h6></div>
+              <div class="dcb pt-0" id="dash-field-list"></div>
               <div class="px-3 pb-3">
-                <button class="btn btn-sm w-100" style="background:var(--vdw-green-pale);color:var(--vdw-green);font-weight:600" onclick="showPage('velden')">
+                <button class="btn btn-sm w-100" style="background:var(--gp);color:var(--g);font-weight:600" onclick="showPage('velden')">
                   Alle velden bekijken <i class="bi bi-arrow-right"></i>
                 </button>
               </div>
@@ -511,451 +370,705 @@
         </div>
       </div>
 
-      <!-- ══ KAART PAGE ══ -->
-      <div id="page-kaart" class="page-section">
-        <div class="dash-card">
-          <div class="dash-card-header">
-            <i class="bi bi-map-fill" style="color:var(--vdw-green)"></i>
-            <h6>Live Kaart &mdash; Velden overzicht</h6>
-            <div class="ms-auto d-flex gap-2" style="font-size:.78rem">
-              <span><span class="legend-dot" style="background:#f44336"></span>Te hoog</span>
-              <span><span class="legend-dot" style="background:#ff9800"></span>Te laag</span>
-              <span><span class="legend-dot" style="background:#4caf50"></span>OK</span>
-              <span><span class="legend-dot" style="background:#2196f3"></span>In uitvoering</span>
+      <!-- ══ KAART ══ -->
+      <div id="page-kaart" class="page">
+        <div class="dc">
+          <div class="dch">
+            <i class="bi bi-map-fill" style="color:var(--g)"></i>
+            <h6>Live Kaart — Veldenовerzicht</h6>
+            <div class="ms-auto d-flex gap-3" style="font-size:.76rem">
+              <span><span class="ld" style="background:#f44336"></span>Te hoog</span>
+              <span><span class="ld" style="background:#ff9800"></span>Te laag</span>
+              <span><span class="ld" style="background:#4caf50"></span>OK</span>
+              <span><span class="ld" style="background:#2196f3"></span>In uitvoering</span>
+              <span><span class="ld" style="background:#9c27b0"></span>Gemaaid</span>
             </div>
           </div>
           <div id="arcgis-map"></div>
         </div>
       </div>
 
-      <!-- ══ VELDEN PAGE ══ -->
-      <div id="page-velden" class="page-section">
-        <div class="dash-card">
-          <div class="dash-card-header">
-            <i class="bi bi-list-check" style="color:var(--vdw-green)"></i>
-            <h6>Alle velden &mdash; Maailijst</h6>
+      <!-- ══ VELDEN ══ -->
+      <div id="page-velden" class="page">
+        <div class="dc">
+          <div class="dch">
+            <i class="bi bi-list-check" style="color:var(--g)"></i>
+            <h6>Veldenlijst</h6>
             <div class="ms-auto d-flex gap-2">
-              <input class="form-control form-control-sm" placeholder="Zoeken…" id="velden-search" oninput="filterVelden()" style="width:160px" />
-              <select class="form-select form-select-sm" id="velden-filter" onchange="filterVelden()" style="width:130px">
+              <input class="form-control form-control-sm" placeholder="Zoeken…" id="v-search" oninput="filterVelden()" style="width:150px" />
+              <select class="form-select form-select-sm" id="v-filter" onchange="filterVelden()" style="width:140px">
                 <option value="">Alle statussen</option>
-                <option value="Hoog">Te hoog</option>
-                <option value="OK">OK</option>
-                <option value="Te laag">Te laag</option>
-                <option value="In uitvoering">In uitvoering</option>
-                <option value="Gemaaid">Gemaaid</option>
+                <option>Hoog</option><option>OK</option><option>Te laag</option>
+                <option>In uitvoering</option><option>Gemaaid</option>
               </select>
             </div>
           </div>
-          <div class="dash-card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0" id="velden-table">
-                <thead style="background:var(--vdw-green-pale)">
-                  <tr>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none;padding:.8rem 1.2rem">Veld</th>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Locatie</th>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Coördinaten</th>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Hoogte (mm)</th>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Status</th>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Prioriteit</th>
-                    <th style="font-size:.8rem;color:var(--vdw-green-dark);border:none">Machinist</th>
-                  </tr>
-                </thead>
-                <tbody id="velden-tbody"></tbody>
-              </table>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:var(--gp)">
+                <tr>
+                  <th class="ps-3" style="border:none;padding:.8rem 1.2rem">Veld</th>
+                  <th style="border:none">Locatie</th>
+                  <th style="border:none">Coördinaten</th>
+                  <th style="border:none">Hoogte</th>
+                  <th style="border:none">Status</th>
+                  <th style="border:none">Prioriteit</th>
+                  <th style="border:none">Machinist</th>
+                </tr>
+              </thead>
+              <tbody id="v-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MACHINIST ROUTE ══ -->
+      <div id="page-route" class="page">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <div class="dc h-100">
+              <div class="dch"><i class="bi bi-cpu" style="color:var(--g)"></i><h6>Sensor & Meting</h6></div>
+              <div class="dcb text-center">
+                <div class="mb-3">
+                  <div class="sensor-dot off d-inline-block mb-1" id="big-s-dot" style="width:14px;height:14px"></div>
+                  <div id="big-s-label" style="font-size:.85rem;color:#6c757d">Sensor inactief</div>
+                  <div id="big-s-since" style="font-size:.75rem;color:#adb5bd;margin-top:.2rem"></div>
+                </div>
+                <button class="btn-meting" id="btn-meting" onclick="toggleMeting()">
+                  <i class="bi bi-play-fill" id="meting-icon"></i>
+                  <span id="meting-txt">Meting starten</span>
+                </button>
+                <div class="mt-3 p-3 rounded" style="background:#f8f9fa;font-size:.8rem;color:#6c757d;text-align:left">
+                  <b>Laatste meting:</b><br>
+                  <span id="last-meting">Nog geen meting uitgevoerd</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="dc h-100">
+              <div class="dch">
+                <i class="bi bi-signpost-2-fill" style="color:var(--g)"></i>
+                <h6>Optimale maairoute</h6>
+                <div class="ms-auto d-flex gap-2">
+                  <button class="btn btn-sm" style="background:var(--g);color:#fff;font-size:.78rem" onclick="openGoogleMaps()">
+                    <i class="bi bi-map me-1"></i>Open in Google Maps
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" style="font-size:.78rem" onclick="herbereken()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="dcb pt-0" id="route-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="dc">
+          <div class="dch"><i class="bi bi-map-fill" style="color:var(--g)"></i><h6>Route op kaart</h6></div>
+          <div id="arcgis-map-route" style="height:340px;border-radius:0 0 12px 12px;overflow:hidden"></div>
+        </div>
+      </div>
+
+      <!-- ══ STAKEHOLDER ══ -->
+      <div id="page-stakeholder" class="page">
+        <div class="row g-3 mb-3" id="stake-stats"></div>
+        <div class="row g-3">
+          <div class="col-md-7">
+            <div class="dc">
+              <div class="dch"><i class="bi bi-file-earmark-check-fill" style="color:var(--g)"></i><h6>Contractnaleving — <span id="stake-contract-name"></span></h6></div>
+              <div class="dcb" id="stake-contracts"></div>
+            </div>
+          </div>
+          <div class="col-md-5">
+            <div class="dc">
+              <div class="dch"><i class="bi bi-geo-alt-fill" style="color:var(--g)"></i><h6>Jouw velden</h6></div>
+              <div class="dcb pt-0" id="stake-fields"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ══ TEAM PAGE ══ -->
-      <div id="page-team" class="page-section">
+      <!-- ══ TEAM ══ -->
+      <div id="page-team" class="page">
         <div class="row g-3">
           <div class="col-md-4" id="team-cards"></div>
           <div class="col-md-8">
-            <div class="dash-card">
-              <div class="dash-card-header"><i class="bi bi-clock-history" style="color:var(--vdw-green)"></i><h6>Activiteit vandaag</h6></div>
-              <div class="dash-card-body">
-                <div id="activity-log"></div>
-              </div>
+            <div class="dc">
+              <div class="dch"><i class="bi bi-clock-history" style="color:var(--g)"></i><h6>Activiteitenlog</h6></div>
+              <div class="dcb" id="act-log"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ══ INSTELLINGEN PAGE ══ -->
-      <div id="page-instellingen" class="page-section">
+      <!-- ══ INSTELLINGEN ══ -->
+      <div id="page-instellingen" class="page">
         <div class="row g-3">
           <div class="col-md-6">
-            <div class="dash-card">
-              <div class="dash-card-header"><i class="bi bi-sliders" style="color:var(--vdw-green)"></i><h6>Grashoogte drempelwaarden</h6></div>
-              <div class="dash-card-body">
-                <div class="mb-3">
-                  <label class="form-label fw-semibold" style="font-size:.85rem">Maximale hoogte (mm) &mdash; Alarm</label>
-                  <input type="number" class="form-control" value="120" id="set-max" />
+            <div class="dc">
+              <div class="dch"><i class="bi bi-sliders" style="color:var(--g)"></i><h6>Grashoogte drempelwaarden</h6></div>
+              <div class="dcb">
+                <div class="settings-group">
+                  <label>Maximale hoogte — Alarm (mm)</label>
+                  <div class="settings-row">
+                    <input type="number" class="form-control" value="120" id="set-max" min="0" max="300" />
+                    <span class="settings-unit">mm</span>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label fw-semibold" style="font-size:.85rem">Gewenste hoogte (mm)</label>
-                  <input type="number" class="form-control" value="80" id="set-target" />
+                <div class="settings-group">
+                  <label>Gewenste hoogte (mm)</label>
+                  <div class="settings-row">
+                    <input type="number" class="form-control" value="80" id="set-target" min="0" max="300" />
+                    <span class="settings-unit">mm</span>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label fw-semibold" style="font-size:.85rem">Minimale hoogte (mm) &mdash; Alarm</label>
-                  <input type="number" class="form-control" value="40" id="set-min" />
+                <div class="settings-group">
+                  <label>Minimale hoogte — Alarm (mm)</label>
+                  <div class="settings-row">
+                    <input type="number" class="form-control" value="40" id="set-min" min="0" max="300" />
+                    <span class="settings-unit">mm</span>
+                  </div>
                 </div>
-                <button class="btn" style="background:var(--vdw-green);color:#fff" onclick="saveSettings()">Opslaan</button>
+                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:8px" onclick="saveSettings()">
+                  <i class="bi bi-check-lg me-2"></i>Opslaan
+                </button>
               </div>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="dash-card">
-              <div class="dash-card-header"><i class="bi bi-bell-fill" style="color:var(--vdw-green)"></i><h6>Meldingen</h6></div>
-              <div class="dash-card-body">
+            <div class="dc">
+              <div class="dch"><i class="bi bi-bell-fill" style="color:var(--g)"></i><h6>Meldingen</h6></div>
+              <div class="dcb">
                 <div class="form-check form-switch mb-3">
-                  <input class="form-check-input" type="checkbox" checked id="notif-high" />
-                  <label class="form-check-label">Alarm bij te hoog gras</label>
+                  <input class="form-check-input" type="checkbox" checked id="n1" />
+                  <label class="form-check-label" for="n1">Alarm bij te hoog gras</label>
                 </div>
                 <div class="form-check form-switch mb-3">
-                  <input class="form-check-input" type="checkbox" checked id="notif-low" />
-                  <label class="form-check-label">Alarm bij te laag gras</label>
+                  <input class="form-check-input" type="checkbox" checked id="n2" />
+                  <label class="form-check-label" for="n2">Alarm bij te laag gras</label>
                 </div>
                 <div class="form-check form-switch mb-3">
-                  <input class="form-check-input" type="checkbox" id="notif-done" />
-                  <label class="form-check-label">Melding bij klaar maaien</label>
+                  <input class="form-check-input" type="checkbox" id="n3" />
+                  <label class="form-check-label" for="n3">Melding bij klaar maaien</label>
                 </div>
-                <button class="btn" style="background:var(--vdw-green);color:#fff" onclick="saveSettings()">Opslaan</button>
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" checked id="n4" />
+                  <label class="form-check-label" for="n4">Dagelijkse rapportage (08:00)</label>
+                </div>
+                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:8px" onclick="saveSettings()">
+                  <i class="bi bi-check-lg me-2"></i>Opslaan
+                </button>
+              </div>
+            </div>
+            <div class="dc">
+              <div class="dch"><i class="bi bi-people-fill" style="color:var(--g)"></i><h6>Gebruikersbeheer</h6></div>
+              <div class="dcb p-0">
+                <table class="table mb-0">
+                  <thead style="background:var(--gp)">
+                    <tr><th class="ps-3" style="border:none">Gebruiker</th><th style="border:none">Rol</th><th style="border:none">Status</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td class="ps-3">admin</td><td><span class="badge" style="background:#e3f2fd;color:#1565c0">Beheerder</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
+                    <tr><td class="ps-3">machinist1</td><td><span class="badge" style="background:var(--gp);color:var(--g)">Machinist</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
+                    <tr><td class="ps-3">machinist2</td><td><span class="badge" style="background:var(--gp);color:var(--g)">Machinist</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
+                    <tr><td class="ps-3">stakeholder1</td><td><span class="badge" style="background:#f3e5f5;color:#6a1b9a">Stakeholder</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
+                    <tr><td class="ps-3">stakeholder2</td><td><span class="badge" style="background:#f3e5f5;color:#6a1b9a">Stakeholder</span></td><td><span class="badge" style="background:var(--gp);color:var(--g)">Actief</span></td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-    </div><!-- /content-area -->
+    </div><!-- /ca -->
+    <footer>&copy; 2026 Van der Werf Groenvoorzieningen &mdash; IoT Dashboard</footer>
+  </div>
+</div>
 
-    <footer style="padding:.75rem 1.5rem;border-top:1px solid #e9ecef;background:#fff;font-size:.78rem;color:#adb5bd">
-      &copy; 2026 Van der Werf Groenvoorzieningen &mdash; IoT Dashboard
-    </footer>
-  </div><!-- /main-content -->
-</div><!-- /app -->
-
-<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js" crossorigin="anonymous"></script>
 <script src="https://js.arcgis.com/4.29/"></script>
 
 <script>
-/* ═══════════════════════════════════
+/* ═══════════════════════════════════════
    DATA
-═══════════════════════════════════ */
+═══════════════════════════════════════ */
+const ARCGIS_KEY = 'AAPTafbApNhhgWsbWXgebKtvh5g..XByo26RzNv5EaWx46_wxzP_CzYxiP94qq-SzdlICGXDOPYON5grXjqOdAEdTGsQ5QDq2BE6n3LfEKElP4jBSlKHlRtbUEXDpqYaXW9DM5yUXhpB19gDYJG95o3g9u_-UCzEjQ_jgd1K_mkxRQ4EV4Tbj6Zj3gCvJ_e0laRc4pfDpFHsYIwGN3Ng-Sfr1YMLm72RUtr2wlNJsM5Ey7GS-3wTxvxd_u8cdVeRrpxnv6R07jG1iB-CkheEi-YoWAT1_3OoDQU3d';
+
 const USERS = {
-  machinist1: { pass: 'groen123', name: 'Machinist 1', role: 'Medewerker', initials: 'M1' },
-  machinist2: { pass: 'groen456', name: 'Machinist 2', role: 'Medewerker', initials: 'M2' },
-  admin:      { pass: 'admin789', name: 'Beheerder',   role: 'Beheerder',  initials: 'AD' },
+  admin:        { pass:'admin789',  name:'Beheerder',      role:'admin',       initials:'AD', label:'Beheerder' },
+  machinist1:   { pass:'groen123',  name:'Machinist 1',    role:'machinist',   initials:'M1', label:'Machinist', assignedVelden: null },
+  machinist2:   { pass:'groen456',  name:'Machinist 2',    role:'machinist',   initials:'M2', label:'Machinist', assignedVelden: null },
+  stakeholder1: { pass:'stake123',  name:'Gemeente Amsterdam', role:'stakeholder', initials:'GA', label:'Stakeholder', assignedVelden:[1,2,3,4,5,6,7], contractName:'Gemeente Amsterdam' },
+  stakeholder2: { pass:'stake456',  name:'Sportpark Noord',    role:'stakeholder', initials:'SN', label:'Stakeholder', assignedVelden:[8,9,10,11,12,13], contractName:'Sportpark Noord BV' },
 };
 
 const VELDEN = [
-  { id:1,  naam:'Veld 1',  loc:'Sportpark Noord',    lat:52.3702, lng:4.8952, hoogte:145, status:'Hoog',         prio:'Hoog',   machinist:'Machinist 1' },
-  { id:2,  naam:'Veld 2',  loc:'Stadspark Centrum',  lat:52.3780, lng:4.9010, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'-' },
-  { id:3,  naam:'Veld 3',  loc:'Gemeentepark',       lat:52.3750, lng:4.9000, hoogte:131, status:'Hoog',         prio:'Hoog',   machinist:'Machinist 2' },
-  { id:4,  naam:'Veld 4',  loc:'Berm A9',            lat:52.3680, lng:4.9100, hoogte:95,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
-  { id:5,  naam:'Veld 5',  loc:'Woonwijk West',      lat:52.3640, lng:4.8800, hoogte:78,  status:'OK',           prio:'Laag',   machinist:'-' },
-  { id:6,  naam:'Veld 6',  loc:'Recreatiegebied',    lat:52.3820, lng:4.8750, hoogte:68,  status:'OK',           prio:'Laag',   machinist:'-' },
-  { id:7,  naam:'Veld 7',  loc:'Industrieterrein Z', lat:52.3590, lng:4.9200, hoogte:34,  status:'Te laag',      prio:'Middel', machinist:'-' },
-  { id:8,  naam:'Veld 8',  loc:'Bedrijventerrein',   lat:52.3600, lng:4.9050, hoogte:37,  status:'Te laag',      prio:'Middel', machinist:'-' },
-  { id:9,  naam:'Veld 9',  loc:'Sportpark Noord B',  lat:52.3708, lng:4.8960, hoogte:158, status:'Hoog',         prio:'Hoog',   machinist:'-' },
-  { id:10, naam:'Veld 10', loc:'Schoolplein Oost',   lat:52.3730, lng:4.9080, hoogte:75,  status:'OK',           prio:'Laag',   machinist:'-' },
-  { id:11, naam:'Veld 11', loc:'Begraafplaats',      lat:52.3660, lng:4.8900, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'-' },
-  { id:12, naam:'Veld 12', loc:'Woonwijk Oost',      lat:52.3720, lng:4.8870, hoogte:88,  status:'OK',           prio:'Laag',   machinist:'-' },
-  { id:13, naam:'Veld 13', loc:'Gemeentegroen N',    lat:52.3800, lng:4.8920, hoogte:110, status:'Hoog',         prio:'Middel', machinist:'-' },
-  { id:14, naam:'Veld 14', loc:'Park De Hoef',       lat:52.3760, lng:4.8840, hoogte:85,  status:'Gemaaid',      prio:'Laag',   machinist:'Machinist 2' },
-  { id:15, naam:'Veld 15', loc:'Berm N244',          lat:52.3550, lng:4.8980, hoogte:90,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
+  { id:1,  naam:'Veld 1',  loc:'Sportpark Noord A',   lat:52.3702, lng:4.8952, hoogte:145, status:'Hoog',         prio:'Hoog',   machinist:'—' },
+  { id:2,  naam:'Veld 2',  loc:'Stadspark Centrum',   lat:52.3780, lng:4.9010, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'—' },
+  { id:3,  naam:'Veld 3',  loc:'Gemeentepark',        lat:52.3750, lng:4.9000, hoogte:131, status:'Hoog',         prio:'Hoog',   machinist:'Machinist 2' },
+  { id:4,  naam:'Veld 4',  loc:'Berm A9',             lat:52.3680, lng:4.9100, hoogte:95,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
+  { id:5,  naam:'Veld 5',  loc:'Woonwijk West',       lat:52.3640, lng:4.8800, hoogte:78,  status:'OK',           prio:'Laag',   machinist:'—' },
+  { id:6,  naam:'Veld 6',  loc:'Recreatiegebied',     lat:52.3820, lng:4.8750, hoogte:68,  status:'OK',           prio:'Laag',   machinist:'—' },
+  { id:7,  naam:'Veld 7',  loc:'Industrieterrein Z',  lat:52.3590, lng:4.9200, hoogte:34,  status:'Te laag',      prio:'Middel', machinist:'—' },
+  { id:8,  naam:'Veld 8',  loc:'Bedrijventerrein',    lat:52.3600, lng:4.9050, hoogte:37,  status:'Te laag',      prio:'Middel', machinist:'—' },
+  { id:9,  naam:'Veld 9',  loc:'Sportpark Noord B',   lat:52.3708, lng:4.8960, hoogte:158, status:'Hoog',         prio:'Hoog',   machinist:'—' },
+  { id:10, naam:'Veld 10', loc:'Schoolplein Oost',    lat:52.3730, lng:4.9080, hoogte:75,  status:'OK',           prio:'Laag',   machinist:'—' },
+  { id:11, naam:'Veld 11', loc:'Begraafplaats',       lat:52.3660, lng:4.8900, hoogte:82,  status:'OK',           prio:'Laag',   machinist:'—' },
+  { id:12, naam:'Veld 12', loc:'Woonwijk Oost',       lat:52.3720, lng:4.8870, hoogte:88,  status:'OK',           prio:'Laag',   machinist:'—' },
+  { id:13, naam:'Veld 13', loc:'Gemeentegroen N',     lat:52.3800, lng:4.8920, hoogte:110, status:'Hoog',         prio:'Middel', machinist:'—' },
+  { id:14, naam:'Veld 14', loc:'Park De Hoef',        lat:52.3760, lng:4.8840, hoogte:85,  status:'Gemaaid',      prio:'Laag',   machinist:'Machinist 2' },
+  { id:15, naam:'Veld 15', loc:'Berm N244',           lat:52.3550, lng:4.8980, hoogte:90,  status:'In uitvoering',prio:'Middel', machinist:'Machinist 1' },
 ];
 
-/* ═══════════════════════════════════
-   LOGIN
-═══════════════════════════════════ */
-let currentUser = null;
+const ACTIVITY = [
+  { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark',        icon:'scissors',               color:'var(--g)' },
+  { time:'09:15', user:'Machinist 1', msg:'Veld 15 klaar gemaaid',                     icon:'check2-circle',          color:'#4caf50' },
+  { time:'08:50', user:'Systeem',     msg:'Alarm: Veld 9 grashoogte 158mm (max 120mm)',icon:'exclamation-triangle-fill',color:'#f44336' },
+  { time:'08:30', user:'Machinist 1', msg:'Ingelogd op systeem',                       icon:'person-check',           color:'#2196f3' },
+  { time:'08:15', user:'Machinist 1', msg:'Start maaien Veld 4 – Berm A9',             icon:'scissors',               color:'var(--g)' },
+  { time:'07:55', user:'Systeem',     msg:'Dagelijks rapport gegenereerd',              icon:'file-earmark-text',      color:'#9c27b0' },
+];
+
+const TEAM = [
+  { name:'Machinist 1', initials:'M1', status:'Actief',  veld:'Veld 4 – Berm A9',        since:'08:15' },
+  { name:'Machinist 2', initials:'M2', status:'Actief',  veld:'Veld 3 – Gemeentepark',   since:'09:00' },
+  { name:'Beheerder',   initials:'AD', status:'Kantoor', veld:'—',                       since:'07:30' },
+];
+
+/* ═══════════════════════════════════════
+   MENUS PER ROL
+═══════════════════════════════════════ */
+const NAV = {
+  admin: [
+    { sec:'Hoofdmenu' },
+    { page:'dashboard', icon:'grid-1x2-fill', label:'Dashboard' },
+    { page:'kaart',     icon:'map-fill',      label:'Kaart',    badge:'Live' },
+    { page:'velden',    icon:'list-check',    label:'Velden',   badge:'15' },
+    { sec:'Beheer' },
+    { page:'team',        icon:'people-fill',   label:'Team' },
+    { page:'instellingen',icon:'gear-fill',     label:'Instellingen' },
+  ],
+  machinist: [
+    { sec:'Mijn werk' },
+    { page:'route',  icon:'signpost-2-fill', label:'Maairoute',   badge:'Nieuw' },
+    { page:'kaart',  icon:'map-fill',        label:'Kaart',       badge:'Live' },
+    { page:'velden', icon:'list-check',      label:'Alle velden' },
+  ],
+  stakeholder: [
+    { sec:'Overzicht' },
+    { page:'stakeholder', icon:'file-earmark-check-fill', label:'Mijn contract' },
+    { page:'kaart',       icon:'map-fill',                label:'Kaart',   badge:'Live' },
+  ],
+};
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let CU = null;
+let metingActive = false;
+let metingInterval = null;
+let mapInit = { kaart: false, route: false };
+let chartsInit = false;
+
+/* ═══════════════════════════════════════
+   LOGIN / LOGOUT
+═══════════════════════════════════════ */
+function fillDemo(u, p) { document.getElementById('u').value=u; document.getElementById('p').value=p; }
+function togglePass() {
+  const i=document.getElementById('p'), e=document.getElementById('eye-ic');
+  i.type = i.type==='password'?'text':'password';
+  e.className = 'bi bi-eye'+(i.type==='text'?'-slash':'');
+}
 
 function doLogin(e) {
   e.preventDefault();
-  const u = document.getElementById('inp-user').value.trim().toLowerCase();
-  const p = document.getElementById('inp-pass').value;
-  const err = document.getElementById('login-error');
-  err.style.display = 'none';
-
-  if (USERS[u] && USERS[u].pass === p) {
-    currentUser = { ...USERS[u], username: u };
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('sb-username').textContent = currentUser.name;
-    document.getElementById('sb-role').textContent = currentUser.role;
-    document.getElementById('sb-avatar').textContent = currentUser.initials;
-    initDashboard();
-  } else {
-    err.style.display = 'block';
-  }
+  const u=document.getElementById('u').value.trim().toLowerCase(), p=document.getElementById('p').value;
+  const err=document.getElementById('login-error');
+  err.style.display='none';
+  if (USERS[u] && USERS[u].pass===p) {
+    CU = { ...USERS[u], username: u };
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('sb-name').textContent=CU.name;
+    document.getElementById('sb-role').textContent=CU.label;
+    document.getElementById('sb-av').textContent=CU.initials;
+    buildNav(CU.role);
+    initApp();
+  } else { err.style.display='block'; }
 }
 
 function doLogout() {
-  currentUser = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('inp-user').value = '';
-  document.getElementById('inp-pass').value = '';
+  CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
+  mapInit={kaart:false,route:false}; chartsInit=false;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('u').value=''; document.getElementById('p').value='';
 }
 
-function togglePass() {
-  const inp = document.getElementById('inp-pass');
-  const ico = document.getElementById('eye-icon');
-  if (inp.type === 'password') { inp.type = 'text'; ico.className = 'bi bi-eye-slash'; }
-  else { inp.type = 'password'; ico.className = 'bi bi-eye'; }
+/* ═══════════════════════════════════════
+   NAV
+═══════════════════════════════════════ */
+function buildNav(role) {
+  const items = NAV[role] || NAV.admin;
+  let html='';
+  items.forEach(it => {
+    if (it.sec) { html+=`<div class="sb-sec">${it.sec}</div>`; return; }
+    html+=`<button class="sb-link" onclick="showPage('${it.page}')">
+      <i class="bi bi-${it.icon}"></i> ${it.label}
+      ${it.badge?`<span class="sb-badge">${it.badge}</span>`:''}
+    </button>`;
+  });
+  document.getElementById('sb-nav-content').innerHTML=html;
 }
 
-/* ═══════════════════════════════════
-   NAVIGATIE
-═══════════════════════════════════ */
-let mapInitialized = false;
-
+/* ═══════════════════════════════════════
+   PAGE ROUTING
+═══════════════════════════════════════ */
 function showPage(page) {
-  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
+  const el=document.getElementById('page-'+page);
+  if(el) el.classList.add('active');
+  const btn=document.querySelector(`.sb-link[onclick="showPage('${page}')"]`);
+  if(btn) btn.classList.add('active');
 
-  document.getElementById('page-' + page).classList.add('active');
-  const btn = document.querySelector(`.sidebar-link[onclick="showPage('${page}')"]`);
-  if (btn) btn.classList.add('active');
+  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',team:'Team',instellingen:'Instellingen'};
+  document.getElementById('pg-title').textContent=titles[page]||page;
+  document.getElementById('pg-crumb').textContent=titles[page]||page;
 
-  const titles = { dashboard:'Dashboard', kaart:'Kaart', velden:'Velden', team:'Team', instellingen:'Instellingen' };
-  document.getElementById('page-title').textContent = titles[page] || page;
-  document.getElementById('page-crumb').textContent = titles[page] || page;
-
-  if (page === 'kaart' && !mapInitialized) { initMap(); mapInitialized = true; }
-  if (page === 'velden') { renderVelden(VELDEN); }
-  if (page === 'team') { renderTeam(); }
-
-  // Close sidebar on mobile
-  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+  if(page==='kaart'&&!mapInit.kaart){initMap('arcgis-map',true);mapInit.kaart=true;}
+  if(page==='route'&&!mapInit.route){initMap('arcgis-map-route',false);mapInit.route=true;buildRoute();}
+  if(page==='velden') renderVelden(VELDEN);
+  if(page==='team') renderTeam();
+  if(page==='stakeholder') renderStakeholder();
+  if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
 }
 
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+function initApp() {
+  updateTime();
+  const startPage = {admin:'dashboard', machinist:'route', stakeholder:'stakeholder'}[CU.role]||'dashboard';
+
+  if(CU.role==='machinist') document.getElementById('sensor-indicator').classList.remove('d-none');
+  else document.getElementById('sensor-indicator').classList.add('d-none');
+
+  if(!chartsInit && CU.role==='admin') { initCharts(); chartsInit=true; }
+  renderDashFields();
+  showPage(startPage);
 }
 
-/* ═══════════════════════════════════
-   TIJD
-═══════════════════════════════════ */
-function updateTime() {
-  const now = new Date();
-  document.getElementById('topbar-time').textContent =
-    now.toLocaleDateString('nl-NL', { weekday:'short', day:'numeric', month:'short' }) + ' ' +
-    now.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+/* ── TIJD ── */
+function updateTime(){
+  const n=new Date();
+  document.getElementById('tb-time').textContent=
+    n.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})+' '+
+    n.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
 }
-setInterval(updateTime, 1000);
-updateTime();
+setInterval(updateTime,1000);
 
-/* ═══════════════════════════════════
-   CHARTS
-═══════════════════════════════════ */
-let salesChart, pieChart;
-
+/* ═══════════════════════════════════════
+   CHARTS (admin only)
+═══════════════════════════════════════ */
 function initCharts() {
-  // Area chart
-  salesChart = new ApexCharts(document.querySelector('#sales-chart'), {
-    series: [
-      { name: 'Grashoogte na maaien', data: [105, 92, 88, 76, 110, 84, 95, 78, 102, 88, 75, 82] },
-      { name: 'Gewenste grashoogte',  data: [80,  80, 80, 80, 80,  80, 80, 80, 80,  80, 80, 80] },
+  new ApexCharts(document.querySelector('#sales-chart'), {
+    series:[
+      {name:'Grashoogte na maaien', data:[105,92,88,76,110,84,95,78,102,88,75,82]},
+      {name:'Gewenst (80mm)',        data:[80,80,80,80,80,80,80,80,80,80,80,80]},
     ],
-    chart: { height: 220, type: 'area', toolbar: { show: true, tools: { download: true, selection: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } }, animations: { enabled: true } },
-    colors: ['#2e7d32', '#a5d6a7'],
-    fill: { type: ['gradient', 'solid'], gradient: { shadeIntensity: 1, opacityFrom: .4, opacityTo: .05 } },
-    stroke: { curve: 'smooth', width: [2.5, 2] },
-    dataLabels: { enabled: false },
-    legend: { show: false },
-    xaxis: {
-      type: 'datetime',
-      categories: ['2026-01-01','2026-02-01','2026-03-01','2026-04-01','2026-05-01','2026-06-01',
-                   '2026-07-01','2026-08-01','2026-09-01','2026-10-01','2026-11-01','2026-12-01'],
-    },
-    yaxis: { labels: { formatter: v => v + ' mm' } },
-    tooltip: { x: { format: 'MMMM yyyy' }, y: { formatter: v => v + ' mm' } },
-    grid: { borderColor: '#f0f0f0' },
-    annotations: {
-      yaxis: [{ y: 120, borderColor: '#f44336', label: { text: 'Max grens', style: { color:'#f44336', background:'#ffebee' } } },
-              { y: 40,  borderColor: '#ff9800', label: { text: 'Min grens', style: { color:'#ff9800', background:'#fff3e0' } } }]
-    }
-  });
-  salesChart.render();
+    chart:{height:220,type:'area',toolbar:{show:true},animations:{enabled:true}},
+    colors:['#2e7d32','#a5d6a7'],
+    fill:{type:['gradient','solid'],gradient:{shadeIntensity:1,opacityFrom:.4,opacityTo:.05}},
+    stroke:{curve:'smooth',width:[2.5,1.5]},
+    dataLabels:{enabled:false},
+    legend:{show:false},
+    xaxis:{type:'datetime',categories:['2026-01-01','2026-02-01','2026-03-01','2026-04-01','2026-05-01','2026-06-01','2026-07-01','2026-08-01','2026-09-01','2026-10-01','2026-11-01','2026-12-01']},
+    yaxis:{labels:{formatter:v=>v+' mm'}},
+    tooltip:{x:{format:'MMMM yyyy'},y:{formatter:v=>v+' mm'}},
+    grid:{borderColor:'#f0f0f0'},
+    annotations:{yaxis:[
+      {y:120,borderColor:'#f44336',label:{text:'Max grens',style:{color:'#f44336',background:'#ffebee'}}},
+      {y:40, borderColor:'#ff9800',label:{text:'Min grens',style:{color:'#ff9800',background:'#fff3e0'}}},
+    ]},
+  }).render();
 
-  // Donut chart
-  pieChart = new ApexCharts(document.querySelector('#pie-chart'), {
-    series: [12, 4, 3, 2, 9],  // Gemaaid, Te hoog, In uitvoering, Te laag, OK
-    labels: ['Gemaaid', 'Te hoog', 'In uitvoering', 'Te laag', 'OK'],
-    chart: { type: 'donut', height: 270 },
-    colors: ['#4caf50', '#f44336', '#2196f3', '#ff9800', '#adb5bd'],
-    legend: { position: 'bottom', fontSize: '12px' },
-    dataLabels: { enabled: false },
-    plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Totaal', color: '#1a1a2e', formatter: w => w.globals.seriesTotals.reduce((a,b)=>a+b,0) } } } } },
-  });
-  pieChart.render();
+  new ApexCharts(document.querySelector('#pie-chart'), {
+    series:[12,4,3,2,9],
+    labels:['Gemaaid','Te hoog','In uitvoering','Te laag','OK'],
+    chart:{type:'donut',height:260},
+    colors:['#4caf50','#f44336','#2196f3','#ff9800','#adb5bd'],
+    legend:{position:'bottom',fontSize:'12px'},
+    dataLabels:{enabled:false},
+    plotOptions:{pie:{donut:{size:'65%',labels:{show:true,total:{show:true,label:'Totaal',color:'#1a1a2e',formatter:w=>w.globals.seriesTotals.reduce((a,b)=>a+b,0)}}}}},
+  }).render();
 }
 
-/* ═══════════════════════════════════
-   ARCGIS KAART
-═══════════════════════════════════ */
-function initMap() {
+/* ═══════════════════════════════════════
+   ARCGIS MAP
+═══════════════════════════════════════ */
+function initMap(containerId, showAll) {
   require([
-    'esri/Map',
-    'esri/views/MapView',
-    'esri/Graphic',
-    'esri/layers/GraphicsLayer',
-    'esri/geometry/Point',
-    'esri/symbols/SimpleMarkerSymbol',
-    'esri/PopupTemplate'
-  ], function(Map, MapView, Graphic, GraphicsLayer, Point, SimpleMarkerSymbol, PopupTemplate) {
+    'esri/config','esri/Map','esri/views/MapView',
+    'esri/Graphic','esri/layers/GraphicsLayer',
+  ], function(esriConfig, Map, MapView, Graphic, GraphicsLayer) {
 
-    const map = new Map({ basemap: 'streets-navigation-vector' });
+    esriConfig.apiKey = ARCGIS_KEY;
 
+    const map = new Map({ basemap:'streets-navigation-vector' });
     const view = new MapView({
-      container: 'arcgis-map',
-      map: map,
-      center: [4.9000, 52.372],
-      zoom: 13,
+      container: containerId,
+      map: map, center:[4.9000,52.372], zoom:13,
     });
 
     const statusColor = {
-      'Hoog':         [244, 67,  54,  220],
-      'Te laag':      [255, 152,  0,  220],
-      'OK':           [ 76, 175, 80,  220],
-      'In uitvoering':[33, 150, 243,  220],
-      'Gemaaid':      [156, 204, 101, 220],
+      'Hoog':         [244,67,54,220],
+      'Te laag':      [255,152,0,220],
+      'OK':           [76,175,80,220],
+      'In uitvoering':[33,150,243,220],
+      'Gemaaid':      [156,39,176,220],
     };
 
     const layer = new GraphicsLayer();
+    const veldenToShow = showAll ? VELDEN : getRoute();
 
-    VELDEN.forEach(v => {
-      const color = statusColor[v.status] || [120,120,120,200];
-      const pt = new Point({ longitude: v.lng, latitude: v.lat });
-
-      const sym = {
-        type: 'simple-marker',
-        color: color,
-        size: v.status === 'Hoog' ? 18 : 14,
-        outline: { color: [255,255,255], width: 2 },
-      };
-
-      const popup = {
-        title: `{naam} — {loc}`,
-        content: `
-          <table class="esri-widget__table">
+    veldenToShow.forEach((v,idx) => {
+      const col = statusColor[v.status]||[120,120,120,200];
+      layer.add(new Graphic({
+        geometry:{ type:'point', longitude:v.lng, latitude:v.lat },
+        symbol:{
+          type:'simple-marker', color:col, size: v.status==='Hoog'?18:14,
+          outline:{color:[255,255,255],width:2},
+        },
+        attributes:{ ...v, routeNr: showAll ? '' : (idx+1) },
+        popupTemplate:{
+          title:`{naam} — {loc}`,
+          content:`<table class="esri-widget__table">
             <tr><th>Status</th><td>{status}</td></tr>
             <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
             <tr><th>Prioriteit</th><td>{prio}</td></tr>
             <tr><th>Machinist</th><td>{machinist}</td></tr>
           </table>`,
-      };
+        },
+      }));
 
-      const g = new Graphic({
-        geometry: pt,
-        symbol: sym,
-        attributes: v,
-        popupTemplate: popup,
-      });
-      layer.add(g);
+      // Routenummer label voor machinistenkaart
+      if (!showAll) {
+        layer.add(new Graphic({
+          geometry:{ type:'point', longitude:v.lng, latitude:v.lat },
+          symbol:{
+            type:'text', color:[255,255,255],
+            text: String(idx+1),
+            font:{ size:10, weight:'bold' },
+            yoffset:0,
+          },
+        }));
+      }
     });
 
     map.add(layer);
   });
 }
 
-/* ═══════════════════════════════════
+/* ═══════════════════════════════════════
+   ROUTE ALGORITME
+═══════════════════════════════════════ */
+function getRoute() {
+  const prio = {Hoog:0,'Te laag':1,'In uitvoering':2,OK:3,Gemaaid:99};
+  return [...VELDEN]
+    .filter(v => v.status !== 'Gemaaid' && v.status !== 'OK')
+    .concat(VELDEN.filter(v => v.status === 'OK'))
+    .sort((a,b) => (prio[a.status]??5) - (prio[b.status]??5));
+}
+
+function buildRoute() {
+  const route = getRoute();
+  const list = document.getElementById('route-list');
+  list.innerHTML = route.map((v,i) => {
+    const urgent = v.status==='Hoog';
+    const medium = v.status==='Te laag'||v.status==='In uitvoering';
+    const done   = v.status==='Gemaaid';
+    const numClass = done?'done':(urgent?'urgent':(medium?'medium':''));
+    const bsClass  = {Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'}[v.status]||'';
+    const hColor   = v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32');
+    return `<div class="route-item">
+      <div class="route-num ${numClass}">${i+1}</div>
+      <div class="route-info">
+        <div class="route-name">${v.naam} &mdash; ${v.loc}</div>
+        <div class="route-sub">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O &nbsp;|&nbsp; <span class="bs ${bsClass}">${v.status}</span></div>
+      </div>
+      <div class="route-hoogte" style="color:${hColor}">${v.hoogte}<span style="font-size:.75rem;font-weight:400">mm</span></div>
+    </div>`;
+  }).join('');
+}
+
+function herbereken() { buildRoute(); }
+
+function openGoogleMaps() {
+  const route = getRoute().slice(0,10); // GM ondersteunt max ~10 waypoints gratis
+  const base  = 'https://www.google.com/maps/dir/';
+  const stops = route.map(v=>`${v.lat},${v.lng}`).join('/');
+  window.open(base + stops, '_blank');
+}
+
+/* ═══════════════════════════════════════
+   SENSOR / METING
+═══════════════════════════════════════ */
+function toggleMeting() {
+  metingActive = !metingActive;
+  const btn=document.getElementById('btn-meting');
+  const ico=document.getElementById('meting-icon');
+  const txt=document.getElementById('meting-txt');
+  const dot=document.getElementById('big-s-dot');
+  const lbl=document.getElementById('big-s-label');
+  const since=document.getElementById('big-s-since');
+  const sdot=document.getElementById('s-dot');
+  const slbl=document.getElementById('s-label');
+
+  if(metingActive){
+    btn.classList.add('active-meting');
+    ico.className='bi bi-stop-fill pulse';
+    txt.textContent='Meting stoppen';
+    dot.className='sensor-dot on'; dot.style.cssText='width:14px;height:14px';
+    lbl.textContent='Sensor actief — meting loopt';
+    since.textContent='Gestart om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+    sdot.className='sensor-dot on';
+    slbl.textContent='Sensor actief';
+    document.getElementById('last-meting').textContent='Meting gestart om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    // Simuleer live metingen
+    metingInterval=setInterval(()=>{
+      const h=Math.round(60+Math.random()*80);
+      document.getElementById('last-meting').textContent=`Laatste waarde: ${h} mm (${new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})})`;
+    },3000);
+  } else {
+    btn.classList.remove('active-meting');
+    ico.className='bi bi-play-fill';
+    txt.textContent='Meting starten';
+    dot.className='sensor-dot off'; dot.style.cssText='width:14px;height:14px';
+    lbl.textContent='Sensor inactief';
+    since.textContent='';
+    sdot.className='sensor-dot off';
+    slbl.textContent='Sensor inactief';
+    clearInterval(metingInterval); metingInterval=null;
+  }
+}
+
+/* ═══════════════════════════════════════
    VELDEN TABEL
-═══════════════════════════════════ */
-function statusBadge(s) {
-  const m = { 'Hoog':'badge-hoog', 'Te laag':'badge-laag', 'OK':'badge-ok', 'In uitvoering':'badge-bezig', 'Gemaaid':'badge-ok' };
-  return `<span class="badge-status ${m[s]||''}">${s}</span>`;
-}
-function prioBadge(p) {
-  const m = { 'Hoog':'danger', 'Middel':'warning', 'Laag':'secondary' };
-  return `<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;
+═══════════════════════════════════════ */
+function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
+function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
+
+function renderVelden(data){
+  document.getElementById('v-tbody').innerHTML=data.map(v=>`<tr>
+    <td class="ps-3 fw-semibold">${v.naam}</td>
+    <td>${v.loc}</td>
+    <td style="color:#adb5bd;font-size:.78rem">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
+    <td><strong style="color:${v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32')}">${v.hoogte}</strong> mm</td>
+    <td>${bsBadge(v.status)}</td>
+    <td>${prioBadge(v.prio)}</td>
+    <td>${v.machinist}</td>
+  </tr>`).join('');
 }
 
-function renderVelden(data) {
-  const tbody = document.getElementById('velden-tbody');
-  tbody.innerHTML = data.map(v => `
-    <tr>
-      <td class="ps-3 fw-semibold" style="font-size:.87rem">${v.naam}</td>
-      <td style="font-size:.85rem">${v.loc}</td>
-      <td style="font-size:.8rem;color:#adb5bd">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
-      <td style="font-size:.87rem"><strong>${v.hoogte}</strong> mm</td>
-      <td>${statusBadge(v.status)}</td>
-      <td>${prioBadge(v.prio)}</td>
-      <td style="font-size:.85rem">${v.machinist}</td>
-    </tr>`).join('');
+function filterVelden(){
+  const q=document.getElementById('v-search').value.toLowerCase();
+  const s=document.getElementById('v-filter').value;
+  renderVelden(VELDEN.filter(v=>(v.naam.toLowerCase().includes(q)||v.loc.toLowerCase().includes(q))&&(!s||v.status===s)));
 }
 
-function filterVelden() {
-  const q = document.getElementById('velden-search').value.toLowerCase();
-  const s = document.getElementById('velden-filter').value;
-  const filtered = VELDEN.filter(v =>
-    (v.naam.toLowerCase().includes(q) || v.loc.toLowerCase().includes(q)) &&
-    (!s || v.status === s)
-  );
-  renderVelden(filtered);
+/* dashboard quick list */
+function renderDashFields(){
+  const top=VELDEN.filter(v=>v.status==='Hoog'||v.status==='Te laag').slice(0,5);
+  const el=document.getElementById('dash-field-list');
+  if(!el)return;
+  el.innerHTML=top.map(v=>`<div class="fi">
+    <div class="fi-ic"><i class="bi bi-geo-alt-fill"></i></div>
+    <div class="fi-info"><div class="fi-name">${v.naam} — ${v.loc}</div><div class="fi-sub">${v.hoogte} mm</div></div>
+    ${bsBadge(v.status)}
+  </div>`).join('');
 }
 
-/* ═══════════════════════════════════
+/* ═══════════════════════════════════════
+   STAKEHOLDER VIEW
+═══════════════════════════════════════ */
+function renderStakeholder(){
+  const myVelden=VELDEN.filter(v=>CU.assignedVelden&&CU.assignedVelden.includes(v.id));
+  document.getElementById('stake-contract-name').textContent=CU.contractName||'';
+
+  // Stat cards
+  const tot=myVelden.length, ok=myVelden.filter(v=>v.status==='OK'||v.status==='Gemaaid').length;
+  const hoog=myVelden.filter(v=>v.status==='Hoog').length;
+  const pct=Math.round(ok/tot*100);
+  document.getElementById('stake-stats').innerHTML=`
+    <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-geo-alt-fill"></i></div><div><div class="lbl">Mijn velden</div><div class="val">${tot}</div><div class="sub">toegewezen</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-check2-all"></i></div><div><div class="lbl">Compliant</div><div class="val">${ok}</div><div class="sub">velden OK</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoog}</div><div class="sub">aandacht nodig</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="sc ${pct>=80?'g':'r'}"><div class="ic"><i class="bi bi-shield-check"></i></div><div><div class="lbl">Naleving</div><div class="val">${pct}%</div><div class="sub">contract SLA</div></div></div></div>`;
+
+  // Contractvelden
+  document.getElementById('stake-contracts').innerHTML=myVelden.map(v=>{
+    const comp=v.status==='OK'||v.status==='Gemaaid';
+    const warn=v.status==='In uitvoering'||v.status==='Te laag';
+    const viol=v.status==='Hoog';
+    const cls=viol?'violation':(warn?'warning':'compliant');
+    const icon=viol?'❌':(warn?'⚠️':'✅');
+    const sla=v.hoogte>=40&&v.hoogte<=120?'Binnen SLA':'Buiten SLA';
+    return `<div class="contract-meter ${cls}">
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size:1.1rem">${icon}</span>
+        <strong style="font-size:.88rem">${v.naam} — ${v.loc}</strong>
+        <span class="ms-auto bs ${viol?'bsh':(warn?'bsl':'bsok')}">${sla}</span>
+      </div>
+      <div class="mt-1" style="font-size:.78rem;color:#6c757d">
+        Grashoogte: <b>${v.hoogte} mm</b> &nbsp;|&nbsp; Status: ${v.status} &nbsp;|&nbsp; Machinist: ${v.machinist}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Velden lijst
+  document.getElementById('stake-fields').innerHTML=myVelden.map(v=>`<div class="fi">
+    <div class="fi-ic"><i class="bi bi-patch-check-fill" style="color:${v.status==='Hoog'?'#f44336':(v.status==='OK'?'var(--g)':'#ff9800')}"></i></div>
+    <div class="fi-info"><div class="fi-name">${v.naam}</div><div class="fi-sub">${v.loc} &mdash; ${v.hoogte}mm</div></div>
+    ${bsBadge(v.status)}
+  </div>`).join('');
+}
+
+/* ═══════════════════════════════════════
    TEAM
-═══════════════════════════════════ */
-const TEAM = [
-  { name:'Machinist 1', initials:'M1', status:'Actief', veld:'Veld 4 – Berm A9',       since:'08:15' },
-  { name:'Machinist 2', initials:'M2', status:'Actief', veld:'Veld 3 – Gemeentepark',   since:'09:00' },
-  { name:'Beheerder',   initials:'AD', status:'Kantoor', veld:'—',                       since:'07:30' },
-];
-const ACTIVITY = [
-  { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark', icon:'scissors', color:'var(--vdw-green)' },
-  { time:'09:15', user:'Machinist 1', msg:'Veld 15 klaar gemaaid', icon:'check2-circle', color:'#4caf50' },
-  { time:'08:50', user:'Systeem',     msg:'Alarm: Veld 9 grashoogte 158mm (max 120)', icon:'exclamation-triangle-fill', color:'#f44336' },
-  { time:'08:30', user:'Machinist 1', msg:'Ingelogd op systeem', icon:'person-check', color:'#2196f3' },
-  { time:'08:15', user:'Machinist 1', msg:'Start maaien Veld 4 – Berm A9', icon:'scissors', color:'var(--vdw-green)' },
-];
+═══════════════════════════════════════ */
+function renderTeam(){
+  document.getElementById('team-cards').innerHTML=TEAM.map(t=>`<div class="dc mb-3">
+    <div class="dcb d-flex align-items-center gap-3">
+      <div style="width:46px;height:46px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">${t.initials}</div>
+      <div style="flex:1;min-width:0"><div class="fw-semibold" style="font-size:.88rem">${t.name}</div><div style="font-size:.76rem;color:#adb5bd">${t.veld}</div></div>
+      <span class="badge" style="background:${t.status==='Actief'?'var(--gp)':'#f5f5f5'};color:${t.status==='Actief'?'var(--g)':'#6c757d'}">${t.status}</span>
+    </div>
+  </div>`).join('');
 
-function renderTeam() {
-  document.getElementById('team-cards').innerHTML = TEAM.map(t => `
-    <div class="dash-card mb-3">
-      <div class="dash-card-body d-flex align-items-center gap-3">
-        <div style="width:48px;height:48px;border-radius:50%;background:var(--vdw-green);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0">${t.initials}</div>
-        <div style="flex:1;min-width:0">
-          <div class="fw-semibold" style="font-size:.9rem">${t.name}</div>
-          <div style="font-size:.78rem;color:#adb5bd">${t.veld}</div>
-        </div>
-        <span class="badge" style="background:${t.status==='Actief'?'var(--vdw-green-pale)':'#f5f5f5'};color:${t.status==='Actief'?'var(--vdw-green)':'#6c757d'}">${t.status}</span>
-      </div>
-    </div>`).join('');
-
-  document.getElementById('activity-log').innerHTML = ACTIVITY.map(a => `
-    <div class="d-flex gap-3 mb-3">
-      <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0">
-        <i class="bi bi-${a.icon}"></i>
-      </div>
-      <div style="flex:1">
-        <div style="font-size:.83rem;font-weight:600">${a.user}</div>
-        <div style="font-size:.82rem;color:#495057">${a.msg}</div>
-        <div style="font-size:.75rem;color:#adb5bd">${a.time}</div>
-      </div>
-    </div>`).join('');
+  document.getElementById('act-log').innerHTML=ACTIVITY.map(a=>`<div class="d-flex gap-3 mb-3">
+    <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0"><i class="bi bi-${a.icon}"></i></div>
+    <div><div style="font-size:.82rem;font-weight:600">${a.user}</div><div style="font-size:.81rem;color:#495057">${a.msg}</div><div style="font-size:.74rem;color:#adb5bd">${a.time}</div></div>
+  </div>`).join('');
 }
 
-/* ═══════════════════════════════════
+/* ═══════════════════════════════════════
    INSTELLINGEN
-═══════════════════════════════════ */
-function saveSettings() {
-  alert('Instellingen opgeslagen ✓');
-}
-
-/* ═══════════════════════════════════
-   INIT
-═══════════════════════════════════ */
-function initDashboard() {
-  initCharts();
+═══════════════════════════════════════ */
+function saveSettings(){
+  const max=document.getElementById('set-max').value;
+  const tgt=document.getElementById('set-target').value;
+  const min=document.getElementById('set-min').value;
+  if(parseInt(min)>=parseInt(tgt)||parseInt(tgt)>=parseInt(max)){
+    alert('⚠️ Volgorde klopt niet: Min < Gewenst < Max');
+    return;
+  }
+  alert(`✅ Instellingen opgeslagen\nMin: ${min}mm | Gewenst: ${tgt}mm | Max: ${max}mm`);
 }
 </script>
-
 </body>
 </html>
