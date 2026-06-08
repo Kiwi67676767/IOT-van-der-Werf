@@ -709,12 +709,31 @@ const USERS = {
   admin:        { pass:'admin789',  name:'Beheerder',      role:'admin',       initials:'AD', label:'Beheerder' },
   machinist1:   { pass:'groen123',  name:'Machinist 1',    role:'machinist',   initials:'M1', label:'Machinist', assignedVelden: null },
   machinist2:   { pass:'groen456',  name:'Machinist 2',    role:'machinist',   initials:'M2', label:'Machinist', assignedVelden: null },
-  stakeholder1: { pass:'stake123',  name:'Gemeente Amsterdam', role:'stakeholder', initials:'GA', label:'Stakeholder', assignedVelden:[1,2,3,4,5,6,7], contractName:'Gemeente Amsterdam' },
-  stakeholder2: { pass:'stake456',  name:'Sportpark Noord',    role:'stakeholder', initials:'SN', label:'Stakeholder', assignedVelden:[8,9,10,11,12,13], contractName:'Sportpark Noord BV' },
+  stakeholder1: { pass:'stake123',  name:'Gemeente Groningen', role:'stakeholder', initials:'GG', label:'Stakeholder', assignedVelden:[1,2,3,6,9,10,11,12], contractName:'Gemeente Groningen' },
+  stakeholder2: { pass:'stake456',  name:'Sportpark Kardinge', role:'stakeholder', initials:'SK', label:'Stakeholder', assignedVelden:[4,5,13,14], contractName:'Sportpark Kardinge BV' },
 };
 
-// Velden worden geladen via ArcGIS import — admin voegt ze toe via "Velden importeren"
-const VELDEN = [];
+// Grasvelden regio Groningen — initiële dataset
+function _rings(cx, cy, w=0.0009, h=0.0006){
+  return [[[cx-w,cy-h],[cx+w,cy-h],[cx+w,cy+h],[cx-w,cy+h],[cx-w,cy-h]]];
+}
+const VELDEN = [
+  { id:1,  naam:'Stadspark Noord',       loc:'Stadspark Groningen',      lat:53.2138, lng:6.5472, hoogte:112, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.5472,53.2138,0.0014,0.0009) },
+  { id:2,  naam:'Noorderplantsoen A',    loc:'Noorderplantsoen',         lat:53.2252, lng:6.5549, hoogte:78,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5549,53.2252) },
+  { id:3,  naam:'Noorderplantsoen B',    loc:'Noorderplantsoen',         lat:53.2238, lng:6.5571, hoogte:83,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5571,53.2238) },
+  { id:4,  naam:'Kardinge Sportveld 1',  loc:'Sportpark Kardinge',       lat:53.2341, lng:6.6158, hoogte:145, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.6158,53.2341,0.0012,0.0008) },
+  { id:5,  naam:'Kardinge Sportveld 2',  loc:'Sportpark Kardinge',       lat:53.2328, lng:6.6182, hoogte:92,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.6182,53.2328,0.0012,0.0008) },
+  { id:6,  naam:'Europapark Gazon',      loc:'Europapark',               lat:53.2091, lng:6.5841, hoogte:35,  status:'Te laag',       prio:'Middel', machinist:'—', rings:_rings(6.5841,53.2091) },
+  { id:7,  naam:'Corpus den Hoorn A',    loc:'Corpus den Hoorn',         lat:53.1872, lng:6.5511, hoogte:88,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5511,53.1872) },
+  { id:8,  naam:'Corpus den Hoorn B',    loc:'Corpus den Hoorn',         lat:53.1855, lng:6.5538, hoogte:130, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.5538,53.1855) },
+  { id:9,  naam:'Drafbaan Groenstrook',  loc:'Drafbaan Groningen',       lat:53.2178, lng:6.5682, hoogte:75,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5682,53.2178,0.0007,0.0004) },
+  { id:10, naam:'Selwerd Park',          loc:'Selwerd',                  lat:53.2311, lng:6.5488, hoogte:67,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5488,53.2311) },
+  { id:11, naam:'De Wijert Berm',        loc:'De Wijert',                lat:53.1978, lng:6.5421, hoogte:155, status:'Hoog',          prio:'Hoog',   machinist:'—', rings:_rings(6.5421,53.1978,0.0007,0.0004) },
+  { id:12, naam:'Hortus Botanicus Gras', loc:'Hortus Botanicus',         lat:53.2192, lng:6.5728, hoogte:60,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5728,53.2192,0.0006,0.0004) },
+  { id:13, naam:'Paddepoel Sportveld',   loc:'Sportpark Paddepoel',      lat:53.2421, lng:6.5512, hoogte:98,  status:'In uitvoering', prio:'Middel', machinist:'Machinist 1', rings:_rings(6.5512,53.2421,0.0012,0.0008) },
+  { id:14, naam:'Zernike Campus Gazon',  loc:'Zernike Campus',           lat:53.2408, lng:6.5348, hoogte:82,  status:'OK',            prio:'Laag',   machinist:'—', rings:_rings(6.5348,53.2408) },
+  { id:15, naam:'Lewenborg Plantsoen',   loc:'Lewenborg',                lat:53.2158, lng:6.6238, hoogte:115, status:'Hoog',          prio:'Middel', machinist:'—', rings:_rings(6.6238,53.2158) },
+];
 
 const ACTIVITY = [
   { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark',        icon:'scissors',               color:'var(--g)' },
@@ -955,8 +974,8 @@ function initMap(containerId, showAll) {
     const view = new MapView({
       container: containerId,
       map: map,
-      center: [4.9000, 52.372],
-      zoom: VELDEN.length ? 13 : 7,
+      center: [6.5665, 53.2194],
+      zoom: VELDEN.length ? 12 : 8,
     });
     mapViews[containerId] = { view, layer: null };
 
