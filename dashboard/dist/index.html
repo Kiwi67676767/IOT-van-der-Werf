@@ -343,9 +343,9 @@
               <div class="dch">
                 <i class="bi bi-activity" style="color:var(--g)"></i>
                 <h6>Grashoogte in mm — Seizoensoverzicht</h6>
-                <div class="ms-auto d-flex gap-3" style="font-size:.76rem">
-                  <span><span class="ld" style="background:#2e7d32"></span>Na maaien</span>
-                  <span><span class="ld" style="background:#a5d6a7"></span>Gewenst (80mm)</span>
+                <div class="ms-auto d-flex gap-2" style="font-size:.73rem">
+                  <span style="display:flex;align-items:center;gap:.3rem;color:#374151;font-weight:500"><span style="width:20px;height:3px;background:#2e7d32;border-radius:2px;display:inline-block"></span>Grashoogte</span>
+                  <span style="display:flex;align-items:center;gap:.3rem;color:#374151;font-weight:500"><span style="width:20px;height:2px;background:#a5d6a7;border-radius:2px;display:inline-block;border-bottom:2px dashed #a5d6a7"></span>Gewenst (80mm)</span>
                 </div>
               </div>
               <div class="dcb"><div id="sales-chart"></div></div>
@@ -369,8 +369,8 @@
               <div class="dch"><i class="bi bi-scissors" style="color:var(--g)"></i><h6>Prioriteit velden</h6></div>
               <div class="dcb pt-0" id="dash-field-list"></div>
               <div class="px-3 pb-3">
-                <button class="btn btn-sm w-100" style="background:var(--gp);color:var(--g);font-weight:600" onclick="showPage('velden')">
-                  Alle velden bekijken <i class="bi bi-arrow-right"></i>
+                <button class="btn btn-sm w-100" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);color:var(--gd);font-weight:700;border:1px solid #a5d6a7;border-radius:10px;padding:.55rem" onclick="showPage('velden')">
+                  Alle velden bekijken <i class="bi bi-arrow-right ms-1"></i>
                 </button>
               </div>
             </div>
@@ -383,13 +383,13 @@
         <div class="dc">
           <div class="dch">
             <i class="bi bi-map-fill" style="color:var(--g)"></i>
-            <h6>Live Kaart — Veldenовerzicht</h6>
-            <div class="ms-auto d-flex gap-3" style="font-size:.76rem">
-              <span><span class="ld" style="background:#f44336"></span>Te hoog</span>
-              <span><span class="ld" style="background:#ff9800"></span>Te laag</span>
-              <span><span class="ld" style="background:#4caf50"></span>OK</span>
-              <span><span class="ld" style="background:#2196f3"></span>In uitvoering</span>
-              <span><span class="ld" style="background:#9c27b0"></span>Gemaaid</span>
+            <h6>Live Kaart — Veldenoverzicht</h6>
+            <div class="ms-auto d-flex gap-2 flex-wrap" style="font-size:.73rem">
+              <span style="display:flex;align-items:center;gap:.3rem;background:#fff5f5;padding:.2rem .6rem;border-radius:50px;border:1px solid #ffcdd2;color:#c62828;font-weight:600"><span class="ld" style="background:#f44336;width:8px;height:8px"></span>Te hoog</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#fff8f0;padding:.2rem .6rem;border-radius:50px;border:1px solid #ffe0b2;color:#bf360c;font-weight:600"><span class="ld" style="background:#ff9800;width:8px;height:8px"></span>Te laag</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#f0faf0;padding:.2rem .6rem;border-radius:50px;border:1px solid #c8e6c9;color:#1b5e20;font-weight:600"><span class="ld" style="background:#4caf50;width:8px;height:8px"></span>OK</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#f0f7ff;padding:.2rem .6rem;border-radius:50px;border:1px solid #bbdefb;color:#0d47a1;font-weight:600"><span class="ld" style="background:#2196f3;width:8px;height:8px"></span>In uitvoering</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#f8f0ff;padding:.2rem .6rem;border-radius:50px;border:1px solid #e1bee7;color:#4a148c;font-weight:600"><span class="ld" style="background:#9c27b0;width:8px;height:8px"></span>Gemaaid</span>
             </div>
           </div>
           <div id="osm-laad-status" style="font-size:.75rem;color:#6c757d;padding:.3rem .9rem;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;align-items:center;gap:.4rem">
@@ -407,8 +407,11 @@
             <i class="bi bi-list-check" style="color:var(--g)"></i>
             <h6>Veldenlijst</h6>
             <div class="ms-auto d-flex gap-2">
-              <input class="form-control form-control-sm" placeholder="Zoeken…" id="v-search" oninput="filterVelden()" style="width:150px" />
-              <select class="form-select form-select-sm" id="v-filter" onchange="filterVelden()" style="width:140px">
+              <div class="input-group input-group-sm" style="width:170px">
+                <span class="input-group-text" style="background:#f9fafb;border-color:#e5e7eb;border-radius:9px 0 0 9px"><i class="bi bi-search" style="color:#9ca3af;font-size:.8rem"></i></span>
+                <input class="form-control" placeholder="Zoeken…" id="v-search" oninput="filterVelden()" style="border-color:#e5e7eb;border-radius:0 9px 9px 0;font-size:.82rem" />
+              </div>
+              <select class="form-select form-select-sm" id="v-filter" onchange="filterVelden()" style="width:145px;border-radius:9px;border-color:#e5e7eb;font-size:.82rem">
                 <option value="">Alle statussen</option>
                 <option>Hoog</option><option>OK</option><option>Te laag</option>
                 <option>In uitvoering</option><option>Gemaaid</option>
@@ -417,7 +420,7 @@
           </div>
           <div class="table-responsive">
             <table class="table table-hover mb-0">
-              <thead style="background:var(--gp)">
+              <thead style="background:transparent">
                 <tr>
                   <th class="ps-3" style="border:none;padding:.8rem 1.2rem">Veld</th>
                   <th style="border:none">Locatie</th>
@@ -442,18 +445,18 @@
             <div class="dc h-100">
               <div class="dch"><i class="bi bi-cpu" style="color:var(--g)"></i><h6>Sensor & Meting</h6></div>
               <div class="dcb text-center">
-                <div class="mb-3">
-                  <div class="sensor-dot off d-inline-block mb-1" id="big-s-dot" style="width:14px;height:14px"></div>
-                  <div id="big-s-label" style="font-size:.85rem;color:#6c757d">Sensor inactief</div>
-                  <div id="big-s-since" style="font-size:.75rem;color:#adb5bd;margin-top:.2rem"></div>
+                <div class="mb-4 p-3" style="background:linear-gradient(135deg,#f0faf0,#e8f5e9);border-radius:14px;border:1px solid #c8e6c9">
+                  <div class="sensor-dot off d-inline-block mb-2" id="big-s-dot" style="width:14px;height:14px;box-shadow:0 0 0 4px rgba(76,175,80,.15)"></div>
+                  <div id="big-s-label" style="font-size:.88rem;color:#374151;font-weight:600">Sensor inactief</div>
+                  <div id="big-s-since" style="font-size:.75rem;color:#9ca3af;margin-top:.2rem"></div>
                 </div>
                 <button class="btn-meting" id="btn-meting" onclick="toggleMeting()">
                   <i class="bi bi-play-fill" id="meting-icon"></i>
                   <span id="meting-txt">Meting starten</span>
                 </button>
-                <div class="mt-3 p-3 rounded" style="background:#f8f9fa;font-size:.8rem;color:#6c757d;text-align:left">
-                  <b>Laatste meting:</b><br>
-                  <span id="last-meting">Nog geen meting uitgevoerd</span>
+                <div class="mt-3 p-3" style="background:#f9fafb;border:1px solid #f3f4f6;border-radius:12px;font-size:.8rem;color:#6b7280;text-align:left">
+                  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.3rem">Laatste meting</div>
+                  <span id="last-meting" style="font-weight:500;color:#374151">Nog geen meting uitgevoerd</span>
                 </div>
               </div>
             </div>
@@ -464,10 +467,10 @@
                 <i class="bi bi-signpost-2-fill" style="color:var(--g)"></i>
                 <h6>Optimale maairoute</h6>
                 <div class="ms-auto d-flex gap-2">
-                  <button class="btn btn-sm" style="background:var(--g);color:#fff;font-size:.78rem" onclick="openGoogleMaps()">
-                    <i class="bi bi-map me-1"></i>Open in Google Maps
+                  <button class="btn btn-sm" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-size:.78rem;border-radius:9px;font-weight:600;padding:.4rem .9rem;box-shadow:0 3px 10px rgba(46,125,50,.3)" onclick="openGoogleMaps()">
+                    <i class="bi bi-map me-1"></i>Google Maps
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" style="font-size:.78rem" onclick="herbereken()">
+                  <button class="btn btn-sm" style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:9px;font-size:.78rem" onclick="herbereken()">
                     <i class="bi bi-arrow-clockwise"></i>
                   </button>
                 </div>
@@ -527,12 +530,12 @@
                 </div>
               </div>
               <div class="col-md-2">
-                <button class="btn w-100 py-2" style="background:var(--g);color:#fff;font-weight:600" onclick="testImportVerbinding()">
+                <button class="btn w-100 py-2" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-weight:700;border-radius:12px;box-shadow:0 4px 12px rgba(46,125,50,.3)" onclick="testImportVerbinding()">
                   <i class="bi bi-plug-fill me-1"></i>Verbinden
                 </button>
               </div>
               <div class="col-md-2">
-                <button class="btn w-100 py-2 btn-outline-secondary" onclick="resetImport()">
+                <button class="btn w-100 py-2" style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:12px;font-weight:600" onclick="resetImport()">
                   <i class="bi bi-arrow-counterclockwise"></i> Reset
                 </button>
               </div>
@@ -572,14 +575,14 @@
             <h6>Importeer velden — <span id="import-preview-count">0</span> gevonden</h6>
             <span class="ms-auto badge" style="background:#e3f2fd;color:#1565c0;font-size:.72rem">Stap 3 — Importeer</span>
             <div class="ms-2 d-flex gap-2">
-              <button class="btn btn-sm" style="background:var(--g);color:#fff;font-weight:600" onclick="importeerGeselecteerde()">
+              <button class="btn btn-sm" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-weight:700;border-radius:9px;padding:.4rem .9rem;box-shadow:0 3px 10px rgba(46,125,50,.3)" onclick="importeerGeselecteerde()">
                 <i class="bi bi-cloud-arrow-down me-1"></i>Importeer geselecteerde
               </button>
             </div>
           </div>
           <div class="table-responsive">
             <table class="table table-hover mb-0">
-              <thead style="background:var(--gp)">
+              <thead style="background:transparent">
                 <tr>
                   <th style="width:40px;border:none;padding:.8rem 1rem">
                     <input type="checkbox" id="import-select-all" onchange="toggleAlleImport(this.checked)" />
@@ -611,14 +614,14 @@
             <span id="meting-count" class="ms-2 badge" style="background:var(--gp);color:var(--g);font-size:.72rem"></span>
             <div class="ms-auto d-flex gap-2 align-items-center">
               <span id="meting-refresh-lbl" style="font-size:.75rem;color:#adb5bd"></span>
-              <button class="btn btn-sm" style="background:var(--g);color:#fff;font-size:.78rem" onclick="laadMetingen()">
+              <button class="btn btn-sm" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-size:.78rem;border-radius:9px;font-weight:600;padding:.4rem .9rem" onclick="laadMetingen()">
                 <i class="bi bi-arrow-clockwise"></i> Vernieuwen
               </button>
             </div>
           </div>
           <div class="table-responsive">
             <table class="table table-hover mb-0">
-              <thead style="background:var(--gp)">
+              <thead style="background:transparent">
                 <tr>
                   <th class="ps-3" style="border:none">#</th>
                   <th style="border:none">Device</th>
@@ -677,7 +680,7 @@
                     <span class="settings-unit">mm</span>
                   </div>
                 </div>
-                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:8px" onclick="saveSettings()">
+                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:12px" onclick="saveSettings()">
                   <i class="bi bi-check-lg me-2"></i>Opslaan
                 </button>
               </div>
@@ -703,7 +706,7 @@
                   <input class="form-check-input" type="checkbox" checked id="n4" />
                   <label class="form-check-label" for="n4">Dagelijkse rapportage (08:00)</label>
                 </div>
-                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:8px" onclick="saveSettings()">
+                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:12px" onclick="saveSettings()">
                   <i class="bi bi-check-lg me-2"></i>Opslaan
                 </button>
               </div>
@@ -752,7 +755,7 @@
               </div>
               <div class="dcb p-0">
                 <table class="table mb-0">
-                  <thead style="background:var(--gp)">
+                  <thead style="background:transparent">
                     <tr>
                       <th class="ps-3" style="border:none">Gebruikersnaam</th>
                       <th style="border:none">Naam</th>
