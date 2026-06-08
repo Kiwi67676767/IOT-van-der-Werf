@@ -36,4 +36,5 @@ if __name__ == '__main__':
     print("  http://localhost:5000")
     print("  Ctrl+C om te stoppen")
     print("=" * 40)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(debug=False, host='0.0.0.0', port=port)
