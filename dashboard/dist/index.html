@@ -824,6 +824,7 @@ function doLogin(e) {
   err.style.display='none';
   if (USERS[u] && USERS[u].pass===p) {
     CU = { ...USERS[u], username: u };
+    sessionStorage.setItem('cu', JSON.stringify(CU));
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     document.getElementById('sb-name').textContent=CU.name;
@@ -837,10 +838,26 @@ function doLogin(e) {
 function doLogout() {
   CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
   mapInit={kaart:false,route:false}; chartsInit=false;
+  sessionStorage.removeItem('cu');
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('u').value=''; document.getElementById('p').value='';
 }
+
+// Herstel sessie na refresh
+(function() {
+  const saved = sessionStorage.getItem('cu');
+  if (saved) {
+    CU = JSON.parse(saved);
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('sb-name').textContent=CU.name;
+    document.getElementById('sb-role').textContent=CU.label;
+    document.getElementById('sb-av').textContent=CU.initials;
+    buildNav(CU.role);
+    initApp();
+  }
+})();
 
 /* ═══════════════════════════════════════
    NAV
