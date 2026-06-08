@@ -1,24 +1,43 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-.env
+# generated types
+.astro/
 
-# Databases
-*.db
-*.sqlite3
+# unwanted types
+**/env.d.ts
 
-.uv/
+# System / Log files
+*.DS_Store
+*.log
 
-# IDE's
+# Archives
+*.zip
+
+# Sass Cache
+.sass-cache
+
+# Project files
+.idea
+nbproject
+nbproject/private
 .vscode/
-.idea/
+.vs/
 
-# Flask/OS
-instance/
-.pytest_cache/
-.DS_Store
+# Node / Bower
+node_modules/
+bower_components/
 
-# Tailwind
-tailwind.exe
+# Docs
+/docs/_site/
+/docs/vendor/
+/docs/.bundle/
+/docs_html/
+.jekyll-cache/
+.jekyll-metadata
+
+# ETC
+TODO
+test.html
+ad.js
+/.cache/
+CLAUDE.md
+github-issue-response.md
+release.md
