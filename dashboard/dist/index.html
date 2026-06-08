@@ -1080,13 +1080,13 @@ function maakPolygon(lat, lng, rings) {
 // Kleur op basis van maai-status
 function statusSymbol(status) {
   const cfg = {
-    'Hoog':          { fill:[244,67,54,55],   border:[220,30,20,255],   w:3.5 },
-    'Te laag':       { fill:[255,152,0,55],   border:[230,120,0,255],   w:3   },
-    'OK':            { fill:[76,175,80,55],   border:[40,130,45,255],   w:2.5 },
-    'In uitvoering': { fill:[33,150,243,55],  border:[20,100,200,255],  w:3   },
-    'Gemaaid':       { fill:[156,39,176,45],  border:[120,20,150,255],  w:2.5 },
+    'Hoog':          { fill:[244,67,54,18],   border:[220,30,20,255],   w:3   },
+    'Te laag':       { fill:[255,152,0,18],   border:[230,120,0,255],   w:2.5 },
+    'OK':            { fill:[76,175,80,18],   border:[40,130,45,255],   w:2.5 },
+    'In uitvoering': { fill:[33,150,243,18],  border:[20,100,200,255],  w:2.5 },
+    'Gemaaid':       { fill:[156,39,176,18],  border:[120,20,150,255],  w:2.5 },
   };
-  const c = cfg[status] || { fill:[120,120,120,40], border:[80,80,80,255], w:2 };
+  const c = cfg[status] || { fill:[120,120,120,15], border:[80,80,80,255], w:2 };
   return {
     type: 'simple-fill',
     color: c.fill,
