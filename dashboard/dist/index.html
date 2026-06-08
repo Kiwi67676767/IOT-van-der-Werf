@@ -392,6 +392,10 @@
               <span><span class="ld" style="background:#9c27b0"></span>Gemaaid</span>
             </div>
           </div>
+          <div id="bgt-status" style="font-size:.75rem;color:#6c757d;padding:.3rem .9rem;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;align-items:center;gap:.4rem">
+            <span class="spinner-border spinner-border-sm" style="width:.75rem;height:.75rem;border-width:2px"></span>
+            <span>Exacte veldbegrenzingen ophalen uit BGT…</span>
+          </div>
           <div id="arcgis-map"></div>
         </div>
       </div>
@@ -912,6 +916,8 @@ function initApp() {
   if(!chartsInit && CU.role==='admin') { initCharts(); chartsInit=true; }
   renderDashFields();
   showPage(startPage);
+  // Laad echte BGT-polygonen op de achtergrond (geen blokkering)
+  laadBGTPolygonen();
 }
 
 /* ── TIJD ── */
@@ -959,24 +965,100 @@ function initCharts() {
    ARCGIS MAP — POLYGOON WEERGAVE
 ═══════════════════════════════════════ */
 
-// Maak een rechthoekig polygoon (~veldbreedte) rondom een centroid
+/* ═══════════════════════════════════════
+   BGT POLYGONEN VIA PDOK
+   Haalt exacte grenzen van grasvelden op uit de
+   Basisregistratie Grootschalige Topografie (NL overheid)
+═══════════════════════════════════════ */
+async function fetchBGTRings(lat, lng) {
+  // Zoekradius ~250m rond centroid
+  const r = 0.0025;
+  const bbox = `${lng-r},${lat-r},${lng+r},${lat+r}`;
+  const url  = `https://service.pdok.nl/lv/bgt/wfs/v1_0` +
+    `?service=WFS&version=2.0.0&request=GetFeature` +
+    `&typeName=bgt:begroeidterreindeel&outputFormat=application/json` +
+    `&bbox=${bbox}&count=40&srsName=EPSG:4326`;
+  try {
+    const res  = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.features?.length) return null;
+
+    // Score: gras-types krijgen voorrang, daarna kortste afstand tot centroid
+    const GRAS = ['grasland', 'groenvoorziening', 'boomgaard', 'bouwland', 'heide'];
+    const scored = data.features
+      .filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
+      .map(f => {
+        const fv = (f.properties.fysiekVoorkomen || '').toLowerCase();
+        const isGras = GRAS.some(g => fv.includes(g));
+        const ring   = f.geometry.type === 'Polygon'
+          ? f.geometry.coordinates[0]
+          : f.geometry.coordinates[0][0];
+        const cx = ring.reduce((s,c)=>s+c[0],0) / ring.length;
+        const cy = ring.reduce((s,c)=>s+c[1],0) / ring.length;
+        const dist = Math.hypot(cx - lng, cy - lat);
+        return { f, dist, isGras };
+      })
+      .sort((a,b) => {
+        if (a.isGras !== b.isGras) return a.isGras ? -1 : 1;
+        return a.dist - b.dist;
+      });
+
+    if (!scored.length) return null;
+    const best = scored[0].f;
+    // Geef rings terug in ArcGIS-formaat: [[lon,lat],…]
+    if (best.geometry.type === 'Polygon')      return best.geometry.coordinates;
+    if (best.geometry.type === 'MultiPolygon') return best.geometry.coordinates.flat();
+  } catch(e) {
+    console.warn('BGT fetch mislukt:', e);
+  }
+  return null;
+}
+
+// Laad BGT-polygonen voor alle velden (op de achtergrond)
+async function laadBGTPolygonen() {
+  let geladen = 0;
+  await Promise.allSettled(VELDEN.map(async v => {
+    try {
+      const rings = await fetchBGTRings(v.lat, v.lng);
+      if (rings?.length) {
+        v.rings   = rings;
+        v.bgtEcht = true;
+        geladen++;
+      }
+    } catch(e) { /* gebruik rechthoek als fallback */ }
+  }));
+
+  // Verberg laad-indicator
+  const bgtEl = document.getElementById('bgt-status');
+  if (bgtEl) {
+    if (geladen > 0) {
+      bgtEl.innerHTML = `<i class="bi bi-check2-circle" style="color:var(--g)"></i> Exacte BGT-grenzen geladen voor ${geladen} van ${VELDEN.length} velden`;
+      setTimeout(() => bgtEl.style.display='none', 3000);
+    } else {
+      bgtEl.style.display = 'none';
+    }
+  }
+
+  // Ververs alle open kaarten met de echte polygonen
+  Object.entries(mapViews).forEach(([id, mv]) => {
+    if (mv?.layer) {
+      const showAll = !id.includes('route');
+      refreshMap(id, showAll);
+    }
+  });
+}
+
+// Maak polygoon: gebruik BGT-rings als die er zijn, anders rechthoek als noodoplossing
 function maakPolygon(lat, lng, rings) {
   if (rings && rings.length) {
-    // Echte ArcGIS polygoon (uit import)
     return { type:'polygon', rings };
   }
-  // Genereer ~80m × 60m rechthoek rondom centroid
-  const dLat = 0.00040;  // ~44m
-  const dLng = 0.00065;  // ~44m gecorrigeerd voor breedtegraad NL
+  // Noodrechthoek (~80m × 60m) zolang BGT nog niet geladen is
+  const dLat = 0.00040, dLng = 0.00065;
   return {
     type: 'polygon',
-    rings: [[
-      [lng - dLng, lat - dLat],
-      [lng + dLng, lat - dLat],
-      [lng + dLng, lat + dLat],
-      [lng - dLng, lat + dLat],
-      [lng - dLng, lat - dLat],
-    ]],
+    rings: [[[lng-dLng,lat-dLat],[lng+dLng,lat-dLat],[lng+dLng,lat+dLat],[lng-dLng,lat+dLat],[lng-dLng,lat-dLat]]],
   };
 }
 
@@ -1563,7 +1645,7 @@ function importeerGeselecteerde() {
     const nextId = VELDEN.length ? Math.max(...VELDEN.map(v=>v.id))+nieuw+1 : nieuw+1;
     const status = hoogte>120?'Hoog':(hoogte<40?'Te laag':'OK');
     const prio   = hoogte>120?'Hoog':(hoogte<70?'Middel':'Laag');
-    VELDEN.push({ id:nextId, naam, loc, lat, lng, hoogte, status, prio, machinist:'—', rings });
+    VELDEN.push({ id:nextId, naam, loc, lat, lng, hoogte, status, prio, machinist:'—', stakeholder:'—', rings });
     nieuw++;
   });
 
