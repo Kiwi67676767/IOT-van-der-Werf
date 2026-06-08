@@ -172,6 +172,29 @@ def create_user():
     return jsonify({'status': 'ok', 'id': user.id}), 201
 
 
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    me = User.query.get(session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Gebruiker niet gevonden'}), 404
+    data = request.get_json()
+    if data.get('name'):
+        user.name = data['name']
+        user.initials = ''.join(w[0].upper() for w in data['name'].split()[:2])
+    if data.get('role'):
+        user.role = data['role']
+        user.label = {'admin': 'Beheerder', 'machinist': 'Machinist', 'stakeholder': 'Stakeholder'}.get(data['role'], data['role'])
+    if data.get('contract_name') is not None:
+        user.contract_name = data['contract_name'] or None
+    if data.get('password'):
+        user.password_hash = generate_password_hash(data['password'])
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     me = User.query.get(session.get('user_id'))

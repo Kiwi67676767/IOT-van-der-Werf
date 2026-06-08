@@ -775,6 +775,48 @@
   </div>
 </div>
 
+<!-- Edit gebruiker modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--gp)">
+        <h6 class="modal-title fw-bold" style="color:var(--gd)"><i class="bi bi-pencil me-2"></i>Account bewerken — <span id="edit-username-lbl"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-id" />
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Volledige naam</label>
+          <input id="edit-name" type="text" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Rol</label>
+          <select id="edit-role" class="form-select" onchange="toggleEditContract()">
+            <option value="machinist">Machinist</option>
+            <option value="stakeholder">Stakeholder</option>
+            <option value="admin">Beheerder</option>
+          </select>
+        </div>
+        <div class="mb-3" id="edit-contract-wrap" style="display:none">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Contractnaam</label>
+          <input id="edit-contract" type="text" class="form-control" placeholder="bijv. Gemeente X" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Nieuw wachtwoord <span style="color:#adb5bd;font-weight:400">(leeg = niet wijzigen)</span></label>
+          <input id="edit-password" type="password" class="form-control" placeholder="••••••••" />
+        </div>
+        <div id="edit-error" style="font-size:.84rem;color:#dc3545;display:none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+        <button class="btn" style="background:var(--g);color:#fff;font-weight:600" onclick="slaEditOp()">
+          <i class="bi bi-check-lg me-1"></i>Opslaan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js" crossorigin="anonymous"></script>
 <script src="https://js.arcgis.com/4.29/"></script>
@@ -1820,7 +1862,8 @@ function laadGebruikers() {
           <td class="ps-3 fw-semibold">${u.username}</td>
           <td>${u.name}</td>
           <td><span class="badge" style="background:${rolKleur[u.role]||'#eee;color:#333'}">${rolNaam[u.role]||u.role}</span></td>
-          <td class="pe-3 text-end">
+          <td class="pe-3 text-end" style="white-space:nowrap">
+            <button class="btn btn-sm btn-outline-secondary me-1" style="font-size:.72rem;padding:.2rem .6rem" onclick="openEditGebruiker(${u.id},'${u.username}','${u.name}','${u.role}')"><i class="bi bi-pencil"></i></button>
             ${u.username !== CU?.username ? `<button class="btn btn-sm btn-outline-danger" style="font-size:.72rem;padding:.2rem .6rem" onclick="verwijderGebruiker(${u.id},'${u.username}')"><i class="bi bi-trash"></i></button>` : ''}
           </td>
         </tr>`).join('');
@@ -1871,6 +1914,53 @@ function maakGebruiker() {
       laadGebruikers();
     } else {
       errEl.textContent = d.error || 'Fout bij aanmaken.'; errEl.style.display = 'block';
+    }
+  });
+}
+
+function openEditGebruiker(id, username, name, role) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-username-lbl').textContent = username;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-role').value = role;
+  document.getElementById('edit-password').value = '';
+  document.getElementById('edit-error').style.display = 'none';
+  toggleEditContract();
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function toggleEditContract() {
+  const rol = document.getElementById('edit-role').value;
+  document.getElementById('edit-contract-wrap').style.display = rol === 'stakeholder' ? '' : 'none';
+}
+
+function slaEditOp() {
+  const id       = document.getElementById('edit-id').value;
+  const name     = document.getElementById('edit-name').value.trim();
+  const role     = document.getElementById('edit-role').value;
+  const contract = document.getElementById('edit-contract').value.trim();
+  const password = document.getElementById('edit-password').value;
+  const errEl    = document.getElementById('edit-error');
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent = 'Naam is verplicht.'; errEl.style.display = 'block'; return; }
+  if (password && password.length < 6) { errEl.textContent = 'Wachtwoord minimaal 6 tekens.'; errEl.style.display = 'block'; return; }
+
+  const body = {name, role, contract_name: contract || null};
+  if (password) body.password = password;
+
+  fetch(`/api/users/${id}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  })
+  .then(r => r.json().then(d => ({ok: r.ok, d})))
+  .then(({ok, d}) => {
+    if (ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+      laadGebruikers();
+    } else {
+      errEl.textContent = d.error || 'Fout bij opslaan.'; errEl.style.display = 'block';
     }
   });
 }
