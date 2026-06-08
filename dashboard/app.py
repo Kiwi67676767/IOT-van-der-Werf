@@ -1,12 +1,17 @@
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, session
 import os
+import json
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist')
+
+# Secret key voor sessies
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-verander-dit')
 
 # Database instellen via Railway's DATABASE_URL, fallback naar SQLite lokaal
 _db_url = os.environ.get('DATABASE_URL', '')
@@ -21,43 +26,124 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
-# Database model
-class Meting(db.Model):
-    __tablename__ = 'metingen'
-    id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.String(50))
-    gras_hoogte_cm = db.Column(db.Float)
-    latitude = db.Column(db.Float)
-    longitude = db.Column(db.Float)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+# ── MODELLEN ──
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id            = db.Column(db.Integer, primary_key=True)
+    username      = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    name          = db.Column(db.String(100))
+    role          = db.Column(db.String(20))   # admin / machinist / stakeholder
+    initials      = db.Column(db.String(5))
+    label         = db.Column(db.String(50))
+    assigned_velden = db.Column(db.Text)       # JSON array met veld-ids
+    contract_name   = db.Column(db.String(100))
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'device_id': self.device_id,
-            'gras_hoogte_cm': self.gras_hoogte_cm,
-            'latitude': self.latitude,
-            'longitude': self.longitude,
-            'timestamp': self.timestamp.isoformat()
+            'username':       self.username,
+            'name':           self.name,
+            'role':           self.role,
+            'initials':       self.initials,
+            'label':          self.label,
+            'assignedVelden': json.loads(self.assigned_velden) if self.assigned_velden else None,
+            'contractName':   self.contract_name,
         }
 
 
-# Tabellen aanmaken als ze nog niet bestaan
+class Meting(db.Model):
+    __tablename__ = 'metingen'
+    id            = db.Column(db.Integer, primary_key=True)
+    device_id     = db.Column(db.String(50))
+    gras_hoogte_cm = db.Column(db.Float)
+    latitude      = db.Column(db.Float)
+    longitude     = db.Column(db.Float)
+    timestamp     = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id':            self.id,
+            'device_id':     self.device_id,
+            'gras_hoogte_cm': self.gras_hoogte_cm,
+            'latitude':      self.latitude,
+            'longitude':     self.longitude,
+            'timestamp':     self.timestamp.isoformat()
+        }
+
+
+# ── STARTUP ──
+
+INITIELE_GEBRUIKERS = [
+    {'username': 'admin',        'password': 'admin789',  'name': 'Beheerder',          'role': 'admin',       'initials': 'AD', 'label': 'Beheerder',    'assigned_velden': None,                         'contract_name': None},
+    {'username': 'machinist1',   'password': 'groen123',  'name': 'Machinist 1',         'role': 'machinist',   'initials': 'M1', 'label': 'Machinist',    'assigned_velden': None,                         'contract_name': None},
+    {'username': 'machinist2',   'password': 'groen456',  'name': 'Machinist 2',         'role': 'machinist',   'initials': 'M2', 'label': 'Machinist',    'assigned_velden': None,                         'contract_name': None},
+    {'username': 'stakeholder1', 'password': 'stake123',  'name': 'Gemeente Amsterdam',  'role': 'stakeholder', 'initials': 'GA', 'label': 'Stakeholder',  'assigned_velden': json.dumps([1,2,3,4,5,6,7]),  'contract_name': 'Gemeente Amsterdam'},
+    {'username': 'stakeholder2', 'password': 'stake456',  'name': 'Sportpark Noord',     'role': 'stakeholder', 'initials': 'SN', 'label': 'Stakeholder',  'assigned_velden': json.dumps([8,9,10,11,12,13]),'contract_name': 'Sportpark Noord BV'},
+]
+
 with app.app_context():
     db.create_all()
+    # Seed gebruikers als de tabel leeg is
+    if User.query.count() == 0:
+        for u in INITIELE_GEBRUIKERS:
+            db.session.add(User(
+                username      = u['username'],
+                password_hash = generate_password_hash(u['password']),
+                name          = u['name'],
+                role          = u['role'],
+                initials      = u['initials'],
+                label         = u['label'],
+                assigned_velden = u['assigned_velden'],
+                contract_name   = u['contract_name'],
+            ))
+        db.session.commit()
+        print("Gebruikers aangemaakt in database.")
 
+
+# ── AUTH ROUTES ──
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = (data.get('username') or '').strip().lower()
+    password = data.get('password') or ''
+    user = User.query.filter_by(username=username).first()
+    if user and check_password_hash(user.password_hash, password):
+        session['user_id'] = user.id
+        return jsonify(user.to_dict()), 200
+    return jsonify({'error': 'Verkeerde gebruikersnaam of wachtwoord'}), 401
+
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/me', methods=['GET'])
+def me():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    return jsonify(user.to_dict())
+
+
+# ── SENSOR ROUTE ──
 
 @app.route('/data', methods=['POST'])
 def ontvang_meting():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Geen JSON data"}), 400
-
     meting = Meting(
-        device_id=data.get('device_id'),
-        gras_hoogte_cm=data.get('gras_hoogte_cm'),
-        latitude=data.get('latitude'),
-        longitude=data.get('longitude')
+        device_id     = data.get('device_id'),
+        gras_hoogte_cm = data.get('gras_hoogte_cm'),
+        latitude      = data.get('latitude'),
+        longitude     = data.get('longitude')
     )
     db.session.add(meting)
     db.session.commit()
@@ -71,6 +157,8 @@ def get_metingen():
     return jsonify([m.to_dict() for m in metingen])
 
 
+# ── STATIC FILES ──
+
 @app.route('/')
 def index():
     return send_from_directory(DIST_DIR, 'index.html')
@@ -78,16 +166,16 @@ def index():
 
 @app.route('/<path:path>')
 def serve_file(path):
+    # Blokkeer API routes
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
     full_path = os.path.join(DIST_DIR, path)
-
     if os.path.isfile(full_path):
         return send_from_directory(DIST_DIR, path)
-
     if os.path.isdir(full_path):
         index_path = os.path.join(full_path, 'index.html')
         if os.path.isfile(index_path):
             return send_from_directory(full_path, 'index.html')
-
     return send_from_directory(DIST_DIR, 'index.html'), 404
 
 

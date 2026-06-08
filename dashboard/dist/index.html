@@ -817,31 +817,43 @@ function togglePass() {
   e.className = 'bi bi-eye'+(i.type==='text'?'-slash':'');
 }
 
+function zetGebruikerIn(user) {
+  CU = user;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('sb-name').textContent=CU.name;
+  document.getElementById('sb-role').textContent=CU.label;
+  document.getElementById('sb-av').textContent=CU.initials;
+  buildNav(CU.role);
+  initApp();
+}
+
 function doLogin(e) {
   e.preventDefault();
   const u=document.getElementById('u').value.trim().toLowerCase(), p=document.getElementById('p').value;
   const err=document.getElementById('login-error');
   err.style.display='none';
-  if (USERS[u] && USERS[u].pass===p) {
-    CU = { ...USERS[u], username: u };
-    sessionStorage.setItem('cu', JSON.stringify(CU));
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('sb-name').textContent=CU.name;
-    document.getElementById('sb-role').textContent=CU.label;
-    document.getElementById('sb-av').textContent=CU.initials;
-    buildNav(CU.role);
-    initApp();
-  } else { err.style.display='block'; }
+  fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: u, password: p})
+  })
+  .then(r => r.json().then(data => ({ok: r.ok, data})))
+  .then(({ok, data}) => {
+    if (ok) { zetGebruikerIn(data); }
+    else { err.style.display='block'; err.textContent = data.error || 'Verkeerde gebruikersnaam of wachtwoord'; }
+  })
+  .catch(() => { err.style.display='block'; err.textContent='Verbindingsfout, probeer opnieuw.'; });
 }
 
 function doLogout() {
-  CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
-  mapInit={kaart:false,route:false}; chartsInit=false;
-  sessionStorage.removeItem('cu');
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('u').value=''; document.getElementById('p').value='';
+  fetch('/api/logout', {method: 'POST'}).finally(() => {
+    CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
+    mapInit={kaart:false,route:false}; chartsInit=false;
+    document.getElementById('app').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('u').value=''; document.getElementById('p').value='';
+  });
 }
 
 // Herstel sessie na refresh
@@ -1765,6 +1777,12 @@ function saveSettings(){
   }
   alert(`✅ Instellingen opgeslagen\nMin: ${min}mm | Gewenst: ${tgt}mm | Max: ${max}mm`);
 }
+
+// Sessie controleren bij laden — blijft ingelogd na refresh
+fetch('/api/me')
+  .then(r => r.ok ? r.json() : null)
+  .then(user => { if (user) zetGebruikerIn(user); })
+  .catch(() => {});
 </script>
 </body>
 </html>
