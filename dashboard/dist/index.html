@@ -348,7 +348,7 @@
           <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-check2-circle"></i></div><div><div class="lbl">Gemaaid</div><div class="val">12</div><div class="sub">velden vandaag</div></div></div></div>
           <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">4</div><div class="sub">urgent</div></div></div></div>
           <div class="col-6 col-md-3"><div class="sc o"><div class="ic"><i class="bi bi-hourglass-split"></i></div><div><div class="lbl">In uitvoering</div><div class="val">3</div><div class="sub">actieve machinisten</div></div></div></div>
-          <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gem. hoogte</div><div class="val">82<span style="font-size:.95rem">mm</span></div><div class="sub">huidig gemiddeld</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc b" id="dash-naleving-card"><div class="ic"><i class="bi bi-shield-check"></i></div><div><div class="lbl">Contractnaleving</div><div class="val" id="dash-naleving">—</div><div class="sub">van alle velden OK</div></div></div></div>
         </div>
         <div class="row g-3">
           <div class="col-md-8">
@@ -440,6 +440,7 @@
                   <th style="border:none">Coördinaten</th>
                   <th style="border:none">Hoogte</th>
                   <th style="border:none">Status</th>
+                  <th id="th-categorie" style="border:none">Categorie</th>
                   <th style="border:none">Prioriteit</th>
                   <th id="th-machinist"  style="border:none">Machinist</th>
                   <th id="th-stakeholder" style="border:none;display:none">Stakeholder</th>
@@ -641,6 +642,25 @@
           </div>
         </div>
 
+        <!-- VELD-SELECTOR: metingen per veld -->
+        <div id="meting-veld-wrap" class="mt-4">
+          <div class="dc">
+            <div class="dch"><i class="bi bi-map" style="color:var(--g)"></i><h6>Metingen per veld</h6></div>
+            <div class="dcb">
+              <div class="d-flex align-items-center gap-3 mb-3" style="flex-wrap:wrap">
+                <label style="font-size:.84rem;font-weight:600;white-space:nowrap">Selecteer veld:</label>
+                <select id="meting-veld-select" class="form-select" style="max-width:320px" onchange="laadMetingenVoorVeld()">
+                  <option value="">— Kies een veld —</option>
+                </select>
+                <span id="meting-veld-count" style="font-size:.76rem;color:#adb5bd"></span>
+              </div>
+              <div id="meting-veld-resultaat">
+                <div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-map d-block fs-3 mb-2"></i>Kies een veld om de bijbehorende sensor-metingen te zien.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- DETAIL: metingen per device met live polling -->
         <div id="meting-detail" style="display:none">
           <div class="d-flex align-items-center gap-2 mb-3">
@@ -813,6 +833,31 @@
             </div>
           </div>
         </div>
+        <!-- Contractcategorieën kaart (alleen admin) -->
+        <div class="row g-3 mt-1" id="cat-instellingen-wrap" style="display:none">
+          <div class="col-12">
+            <div class="dc">
+              <div class="dch"><i class="bi bi-clipboard2-check-fill" style="color:var(--g)"></i><h6>Contractcategorieën (SLA-niveaus)</h6></div>
+              <div class="dcb">
+                <p style="font-size:.82rem;color:#666;margin-bottom:1rem">Stel per categorie de min/target/max grashoogte in (mm). Wijzigingen worden direct doorgevoerd op alle pagina's.</p>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-3" style="font-size:.84rem">
+                    <thead><tr style="background:#f8f9fa">
+                      <th style="width:240px;border:none">Categorie</th>
+                      <th style="border:none">Min (mm)</th>
+                      <th style="border:none">Target (mm)</th>
+                      <th style="border:none">Max (mm)</th>
+                    </tr></thead>
+                    <tbody id="cat-inst-tbody"></tbody>
+                  </table>
+                </div>
+                <button class="btn px-4 py-2" style="background:var(--g);color:#fff;font-weight:600;border-radius:12px" onclick="slaCategorieinstellingenOp()">
+                  <i class="bi bi-check-lg me-2"></i>Categorieën opslaan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div><!-- /ca -->
@@ -882,6 +927,45 @@ const USERS = {
 
 // Grasvelden — dynamisch geladen vanuit OpenStreetMap (Overpass API)
 let VELDEN = [];
+
+/* ── CONTRACTCATEGORIE STATE ── */
+const CAT_DEFAULTS = {
+  A: { naam:'A — Intensief (Sportgras)', max:  60, target:  40, min: 10 },
+  B: { naam:'B — Regulier (Parkgras)',   max: 100, target:  70, min: 25 },
+  C: { naam:'C — Standaard (Grasveld)', max: 140, target:  90, min: 35 },
+  D: { naam:'D — Extensief (Weide)',    max: 200, target: 140, min: 60 },
+};
+let CAT_INST = (function(){ try { return JSON.parse(localStorage.getItem('cat_inst')) || JSON.parse(JSON.stringify(CAT_DEFAULTS)); } catch(e) { return JSON.parse(JSON.stringify(CAT_DEFAULTS)); } })();
+let VELD_CAT = (function(){ try { return JSON.parse(localStorage.getItem('veld_cat')) || {}; } catch(e) { return {}; } })();
+
+function veldCategorie(veldId) { return VELD_CAT[veldId] || 'C'; }
+function veldInNaleving(veld) {
+  var cat = CAT_INST[veldCategorie(veld.id)];
+  return cat ? (veld.hoogte >= cat.min && veld.hoogte <= cat.max) : true;
+}
+function berekenNaleving() {
+  if (!VELDEN.length) return null;
+  return Math.round(VELDEN.filter(veldInNaleving).length / VELDEN.length * 100);
+}
+function updateNalevingStat() {
+  var el = document.getElementById('dash-naleving');
+  if (!el) return;
+  var pct = berekenNaleving();
+  el.innerHTML = pct !== null ? pct + '<span style="font-size:.95rem">%</span>' : '—';
+  var kaart = el.closest('.sc');
+  if (kaart) kaart.className = 'sc ' + (pct === null ? 'b' : pct >= 80 ? 'g' : pct >= 60 ? 'o' : 'r');
+}
+function slaVeldCatOp(veldId, cat) {
+  VELD_CAT[veldId] = cat;
+  localStorage.setItem('veld_cat', JSON.stringify(VELD_CAT));
+  updateNalevingStat();
+}
+function toonToast(msg, kleur) {
+  kleur = kleur || 'var(--g)';
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:' + kleur + ';color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.84rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+  t.textContent = msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 2500);
+}
 
 const ACTIVITY = [
   { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark',        icon:'scissors',               color:'var(--g)' },
@@ -1027,7 +1111,7 @@ function showPage(page) {
   if(page==='velden') renderVelden(VELDEN);
   if(page==='team') renderTeam();
   if(page==='stakeholder') renderStakeholder();
-  if(page==='metingen') laadMetingen();
+  if(page==='metingen') { laadMetingen(); vulVeldSelector(); }
   if(page==='instellingen') laadGebruikers();
   if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
 }
@@ -1211,6 +1295,7 @@ function actualiseerNaLaden() {
     if (actievePagina?.id === 'page-route')       buildRoute();
     if (actievePagina?.id === 'page-stakeholder') renderStakeholder();
   }
+  updateNalevingStat();
   // Laad-indicator verbergen
   const ind = document.getElementById('osm-laad-status');
   if (ind) {
@@ -1440,6 +1525,7 @@ function renderVelden(data){
     return;
   }
 
+  const CAT_KLEUREN = {A:'#1565c0',B:'#2e7d32',C:'#e65100',D:'#6a1b9a'};
   document.getElementById('v-tbody').innerHTML=data.map(v=>{
     const machSelect = `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
         ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
@@ -1447,11 +1533,20 @@ function renderVelden(data){
     const stakeSelect = `<select class="form-select form-select-sm" style="min-width:160px" onchange="wijsStakeholderToe(${v.id},this.value)">
         ${STAKEHOLDERS.map(s=>`<option ${v.stakeholder===s?'selected':''}>${s}</option>`).join('')}
       </select>`;
+    const huidigCat = veldCategorie(v.id);
+    const catSelect = isAdmin
+      ? `<select class="form-select form-select-sm" style="min-width:80px" onchange="slaVeldCatOp(${v.id},this.value)">
+          ${['A','B','C','D'].map(c=>`<option value="${c}" ${huidigCat===c?'selected':''}>${c}</option>`).join('')}
+        </select>`
+      : `<span class="badge" style="background:${CAT_KLEUREN[huidigCat]||'#555'};color:#fff;font-size:.74rem">${huidigCat}</span>`;
+    const nalev = veldInNaleving(v);
+    const hKleur = !nalev ? '#f44336' : (v.hoogte < (CAT_INST[huidigCat]?.min||0) ? '#ff9800' : '#2e7d32');
     return `<tr>
       <td class="ps-3 fw-semibold">${v.naam}</td>
       <td>${v.loc}</td>
       <td style="color:#adb5bd;font-size:.78rem">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
-      <td><strong style="color:${v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32')}">${v.hoogte}</strong> mm</td>
+      <td><strong style="color:${hKleur}">${v.hoogte}</strong> mm</td>
+      <td>${catSelect}</td>
       <td>${bsBadge(v.status)}</td>
       <td>${prioBadge(v.prio)}</td>
       <td>${isAdmin ? machSelect  : v.machinist}</td>
@@ -1912,6 +2007,7 @@ function laadMetingen() {
         }).join('') + '</div>';
 
       document.getElementById('meting-refresh-lbl').textContent = 'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
+      vulVeldSelector();
     })
     .catch(() => {
       document.getElementById('meting-devices-grid').innerHTML = '<div class="text-center py-4 text-danger">Fout bij ophalen van metingen.</div>';
@@ -1921,6 +2017,7 @@ function laadMetingen() {
 
 function toonMetingenVoorDevice(deviceId) {
   huidigDevice = deviceId;
+  document.getElementById('meting-veld-wrap').style.display = 'none';
   document.getElementById('meting-overview').style.display = 'none';
   document.getElementById('meting-detail').style.display = 'block';
   document.getElementById('detail-device-titel').textContent = 'Device: ' + deviceId;
@@ -1980,13 +2077,131 @@ function metingTerug() {
   huidigDevice = null;
   document.getElementById('meting-detail').style.display = 'none';
   document.getElementById('meting-overview').style.display = 'block';
+  document.getElementById('meting-veld-wrap').style.display = 'block';
   laadMetingen();
+}
+
+/* ── VELD-SELECTOR ── */
+function vulVeldSelector() {
+  const sel = document.getElementById('meting-veld-select');
+  if (!sel) return;
+  const huidig = sel.value;
+  sel.innerHTML = '<option value="">— Kies een veld —</option>' +
+    VELDEN.map(v => `<option value="${v.id}" ${huidig==v.id?'selected':''}>${v.naam} — ${v.loc}</option>`).join('');
+}
+
+function laadMetingenVoorVeld() {
+  const veldId = parseInt(document.getElementById('meting-veld-select').value);
+  const result = document.getElementById('meting-veld-resultaat');
+  const countEl = document.getElementById('meting-veld-count');
+  countEl.textContent = '';
+
+  if (!veldId) {
+    result.innerHTML = '<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-map d-block fs-3 mb-2"></i>Kies een veld om de bijbehorende sensor-metingen te zien.</div>';
+    return;
+  }
+  const veld = VELDEN.find(v => v.id === veldId);
+  if (!veld) return;
+
+  result.innerHTML = '<div class="text-center py-3 text-muted"><i class="bi bi-arrow-clockwise spin me-2"></i>Laden…</div>';
+
+  fetch('/api/metingen')
+    .then(r => r.json())
+    .then(data => {
+      const MAX_DIST = 0.05;
+      const match = data.filter(m => {
+        if (!m.latitude || !m.longitude) return false;
+        return Math.abs(m.latitude - veld.lat) <= MAX_DIST && Math.abs(m.longitude - veld.lng) <= MAX_DIST;
+      });
+
+      const huidigCat = veldCategorie(veld.id);
+      const catDef = CAT_INST[huidigCat] || CAT_DEFAULTS[huidigCat];
+
+      if (!match.length) {
+        result.innerHTML = `<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Geen sensor-metingen gevonden binnen 5km van <strong>${veld.naam}</strong>.</div>`;
+        return;
+      }
+
+      countEl.textContent = `${match.length} meting${match.length!==1?'en':''} gevonden`;
+      const gem = (match.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / match.length).toFixed(1);
+
+      result.innerHTML = `
+        <div class="mb-3" style="font-size:.82rem;color:#6c757d">
+          Veld: <strong>${veld.naam}</strong> &nbsp;|&nbsp; Categorie <strong>${huidigCat}</strong>
+          (${catDef.min}–${catDef.max} mm) &nbsp;|&nbsp; Gem. sensor: <strong>${gem} cm</strong>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" style="font-size:.83rem">
+            <thead style="background:transparent">
+              <tr>
+                <th class="ps-3" style="border:none">#</th>
+                <th style="border:none">Device</th>
+                <th style="border:none">Hoogte</th>
+                <th style="border:none">Status</th>
+                <th style="border:none">Locatie</th>
+                <th style="border:none">Tijdstip</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${match.map((m,i) => {
+                const h = m.gras_hoogte_cm;
+                const s = h > 12 ? 'bsh' : (h < 4 ? 'bsl' : 'bsok');
+                const stxt = h > 12 ? 'Te hoog' : (h < 4 ? 'Te laag' : 'OK');
+                const tijd = m.timestamp ? new Date(m.timestamp+'Z').toLocaleString('nl-NL') : '—';
+                return `<tr>
+                  <td class="ps-3 text-muted">${i+1}</td>
+                  <td style="font-size:.76rem">${m.device_id||'—'}</td>
+                  <td><strong style="color:${h>12?'#f44336':(h<4?'#ff9800':'#2e7d32')}">${h}</strong> cm</td>
+                  <td><span class="bs ${s}">${stxt}</span></td>
+                  <td style="font-size:.76rem;color:#adb5bd">${m.latitude?.toFixed(4)||'—'}°N, ${m.longitude?.toFixed(4)||'—'}°O</td>
+                  <td style="font-size:.76rem;color:#6c757d">${tijd}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    })
+    .catch(() => { result.innerHTML = '<div class="text-center py-3 text-muted">Verbindingsfout.</div>'; });
 }
 
 /* ═══════════════════════════════════════
    GEBRUIKERSBEHEER
 ═══════════════════════════════════════ */
+/* ── CATEGORIE INSTELLINGEN ── */
+function vulCatTabelIn() {
+  const tbody = document.getElementById('cat-inst-tbody');
+  if (!tbody) return;
+  const KLEUREN = {A:'#1565c0',B:'#2e7d32',C:'#e65100',D:'#6a1b9a'};
+  tbody.innerHTML = ['A','B','C','D'].map(cat => {
+    const inst = CAT_INST[cat] || CAT_DEFAULTS[cat];
+    return `<tr>
+      <td class="ps-2 fw-semibold" style="color:${KLEUREN[cat]}">${inst.naam}</td>
+      <td><input type="number" class="form-control form-control-sm" style="max-width:90px" id="cat-${cat}-min" value="${inst.min}" min="0" max="500" /></td>
+      <td><input type="number" class="form-control form-control-sm" style="max-width:90px" id="cat-${cat}-target" value="${inst.target}" min="0" max="500" /></td>
+      <td><input type="number" class="form-control form-control-sm" style="max-width:90px" id="cat-${cat}-max" value="${inst.max}" min="0" max="500" /></td>
+    </tr>`;
+  }).join('');
+}
+
+function slaCategorieinstellingenOp() {
+  ['A','B','C','D'].forEach(cat => {
+    const min    = parseInt(document.getElementById(`cat-${cat}-min`)?.value)    || CAT_DEFAULTS[cat].min;
+    const target = parseInt(document.getElementById(`cat-${cat}-target`)?.value) || CAT_DEFAULTS[cat].target;
+    const max    = parseInt(document.getElementById(`cat-${cat}-max`)?.value)    || CAT_DEFAULTS[cat].max;
+    CAT_INST[cat] = { ...CAT_INST[cat], min, target, max };
+  });
+  localStorage.setItem('cat_inst', JSON.stringify(CAT_INST));
+  updateNalevingStat();
+  if (document.getElementById('page-velden')?.classList.contains('active'))      renderVelden(VELDEN);
+  if (document.getElementById('page-stakeholder')?.classList.contains('active')) renderStakeholder();
+  toonToast('Categorieën opgeslagen & bijgewerkt');
+}
+
 function laadGebruikers() {
+  const wrap = document.getElementById('cat-instellingen-wrap');
+  if (wrap) wrap.style.display = CU?.role === 'admin' ? '' : 'none';
+  vulCatTabelIn();
+  vulVeldSelector();
   fetch('/api/users')
     .then(r => r.json())
     .then(users => {
