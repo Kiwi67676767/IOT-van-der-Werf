@@ -367,11 +367,10 @@
             <div class="dc">
               <div class="dch">
                 <i class="bi bi-activity" style="color:var(--g)"></i>
-                <h6>Grashoogte in mm — Seizoensoverzicht</h6>
-                <div class="ms-auto d-flex gap-2" style="font-size:.73rem">
-                  <span style="display:flex;align-items:center;gap:.3rem;color:#374151;font-weight:500"><span style="width:20px;height:3px;background:#2e7d32;border-radius:2px;display:inline-block"></span>Grashoogte</span>
-                  <span style="display:flex;align-items:center;gap:.3rem;color:#374151;font-weight:500"><span style="width:20px;height:2px;background:#a5d6a7;border-radius:2px;display:inline-block;border-bottom:2px dashed #a5d6a7"></span>Gewenst (80mm)</span>
-                </div>
+                <h6>Grashoogte per veld</h6>
+                <select id="dash-veld-select" class="form-select form-select-sm ms-auto" style="max-width:220px;font-size:.78rem" onchange="herlaadDashChart()">
+                  <option value="">— Kies een veld —</option>
+                </select>
               </div>
               <div class="dcb"><div id="sales-chart"></div></div>
             </div>
@@ -1128,23 +1127,10 @@ setInterval(updateTime,1000);
 /* ═══════════════════════════════════════
    CHARTS (admin only)
 ═══════════════════════════════════════ */
+let dashChart = null;
+
 function initCharts() {
-  new ApexCharts(document.querySelector('#sales-chart'), {
-    series:[
-      {name:'Grashoogte na maaien', data:[105,92,88,76,110,84,95,78,102,88,75,82]},
-      {name:'Gewenst (80mm)',        data:[80,80,80,80,80,80,80,80,80,80,80,80]},
-    ],
-    chart:{height:220,type:'area',toolbar:{show:true},animations:{enabled:true}},
-    colors:['#2e7d32','#a5d6a7'],
-    fill:{type:['gradient','solid'],gradient:{shadeIntensity:1,opacityFrom:.4,opacityTo:.05}},
-    stroke:{curve:'smooth',width:[2.5,1.5]},
-    dataLabels:{enabled:false},
-    legend:{show:false},
-    xaxis:{type:'datetime',categories:['2026-01-01','2026-02-01','2026-03-01','2026-04-01','2026-05-01','2026-06-01','2026-07-01','2026-08-01','2026-09-01','2026-10-01','2026-11-01','2026-12-01']},
-    yaxis:{labels:{formatter:v=>v+' mm'}},
-    tooltip:{x:{format:'MMMM yyyy'},y:{formatter:v=>v+' mm'}},
-    grid:{borderColor:'#f0f0f0'},
-  }).render();
+  document.querySelector('#sales-chart').innerHTML = '<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-map d-block fs-3 mb-2"></i>Kies een veld om de grashoogte te bekijken.</div>';
 
   new ApexCharts(document.querySelector('#pie-chart'), {
     series:[12,4,3,2,9],
@@ -1155,6 +1141,86 @@ function initCharts() {
     dataLabels:{enabled:false},
     plotOptions:{pie:{donut:{size:'65%',labels:{show:true,total:{show:true,label:'Totaal',color:'#1a1a2e',formatter:w=>w.globals.seriesTotals.reduce((a,b)=>a+b,0)}}}}},
   }).render();
+}
+
+function vulDashVeldSelector() {
+  var sel = document.getElementById('dash-veld-select');
+  if (!sel) return;
+  var huidig = sel.value;
+  sel.innerHTML = '<option value="">— Kies een veld —</option>' +
+    VELDEN.map(function(v){ return '<option value="' + v.id + '">' + v.naam + '</option>'; }).join('');
+  if (huidig) sel.value = huidig;
+}
+
+function herlaadDashChart() {
+  var veldId = parseInt(document.getElementById('dash-veld-select').value);
+  if (!veldId) {
+    document.querySelector('#sales-chart').innerHTML = '<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-map d-block fs-3 mb-2"></i>Kies een veld om de grashoogte te bekijken.</div>';
+    return;
+  }
+  var veld = VELDEN.find(function(v){ return v.id === veldId; });
+  if (!veld) return;
+  bouwVeldChart('#sales-chart', veld, 220, false);
+}
+
+function bouwVeldChart(selector, veld, hoogte, toonTabel) {
+  var el = document.querySelector(selector);
+  if (!el) return;
+  el.innerHTML = '<div class="text-center py-3 text-muted"><i class="bi bi-arrow-clockwise spin me-2"></i>Laden…</div>';
+
+  fetch('/api/metingen')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var MAX_DIST = 0.05;
+      var match = data.filter(function(m) {
+        if (!m.latitude || !m.longitude) return false;
+        return Math.abs(m.latitude - veld.lat) <= MAX_DIST && Math.abs(m.longitude - veld.lng) <= MAX_DIST;
+      });
+
+      var huidigCat = veldCategorie(veld.id);
+      var catDef = CAT_INST[huidigCat] || CAT_DEFAULTS[huidigCat];
+      var target = (catDef.target || catDef.min) * 10; // cm → mm
+
+      if (!match.length) {
+        el.innerHTML = '<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Geen metingen gevonden voor <strong>' + veld.naam + '</strong>.</div>';
+        return;
+      }
+
+      // Sorteer op tijd
+      match.sort(function(a,b){ return new Date(a.timestamp) - new Date(b.timestamp); });
+
+      var cats = match.map(function(m){ return new Date(m.timestamp + 'Z').getTime(); });
+      var hoogtes = match.map(function(m){ return +(m.gras_hoogte_cm * 10).toFixed(0); }); // cm → mm
+      var targets = match.map(function(){ return target; });
+
+      el.innerHTML = '';
+      if (dashChart && el.id === 'sales-chart') { try { dashChart.destroy(); } catch(e){} dashChart = null; }
+
+      var chart = new ApexCharts(el, {
+        series: [
+          { name: 'Gemeten hoogte', data: hoogtes },
+          { name: 'Doelhoogte cat.' + huidigCat + ' (' + target + 'mm)', data: targets },
+        ],
+        chart: { height: hoogte, type: 'area', toolbar: { show: true }, animations: { enabled: false } },
+        colors: ['#2e7d32', '#a5d6a7'],
+        fill: { type: ['gradient', 'solid'], gradient: { shadeIntensity:1, opacityFrom:.35, opacityTo:.05 } },
+        stroke: { curve: 'smooth', width: [2.5, 1.5], dashArray: [0, 5] },
+        dataLabels: { enabled: false },
+        legend: { show: true, position: 'top', fontSize: '12px' },
+        xaxis: { type: 'datetime', categories: cats, labels: { datetimeUTC: false } },
+        yaxis: { labels: { formatter: function(v){ return v + ' mm'; } }, min: 0 },
+        tooltip: { x: { format: 'dd MMM yyyy HH:mm' }, y: { formatter: function(v){ return v + ' mm'; } } },
+        grid: { borderColor: '#f0f0f0' },
+      });
+      chart.render();
+      if (el.id === 'sales-chart') dashChart = chart;
+
+      if (toonTabel) {
+        var countEl = document.getElementById('meting-veld-count');
+        if (countEl) countEl.textContent = match.length + ' meting' + (match.length !== 1 ? 'en' : '') + ' gevonden';
+      }
+    })
+    .catch(function(){ el.innerHTML = '<div class="text-center py-3 text-muted">Verbindingsfout.</div>'; });
 }
 
 /* ═══════════════════════════════════════
@@ -1288,6 +1354,7 @@ function actualiseerNaLaden() {
 }
 function actualiseerNaLadenIntern() {
   updateMeldingenBadge();
+  vulDashVeldSelector();
   // Kaartbadge bijwerken
   document.querySelectorAll('.sb-badge').forEach(b => {
     if (/^\d+$/.test(b.textContent)) b.textContent = VELDEN.length;
@@ -2131,77 +2198,19 @@ function vulVeldSelector() {
 }
 
 function laadMetingenVoorVeld() {
-  const veldId = parseInt(document.getElementById('meting-veld-select').value);
-  const result = document.getElementById('meting-veld-resultaat');
-  const countEl = document.getElementById('meting-veld-count');
+  var veldId = parseInt(document.getElementById('meting-veld-select').value);
+  var result = document.getElementById('meting-veld-resultaat');
+  var countEl = document.getElementById('meting-veld-count');
   countEl.textContent = '';
 
   if (!veldId) {
     result.innerHTML = '<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-map d-block fs-3 mb-2"></i>Kies een veld om de bijbehorende sensor-metingen te zien.</div>';
     return;
   }
-  const veld = VELDEN.find(v => v.id === veldId);
+  var veld = VELDEN.find(function(v){ return v.id === veldId; });
   if (!veld) return;
-
-  result.innerHTML = '<div class="text-center py-3 text-muted"><i class="bi bi-arrow-clockwise spin me-2"></i>Laden…</div>';
-
-  fetch('/api/metingen')
-    .then(r => r.json())
-    .then(data => {
-      const MAX_DIST = 0.05;
-      const match = data.filter(m => {
-        if (!m.latitude || !m.longitude) return false;
-        return Math.abs(m.latitude - veld.lat) <= MAX_DIST && Math.abs(m.longitude - veld.lng) <= MAX_DIST;
-      });
-
-      const huidigCat = veldCategorie(veld.id);
-      const catDef = CAT_INST[huidigCat] || CAT_DEFAULTS[huidigCat];
-
-      if (!match.length) {
-        result.innerHTML = `<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Geen sensor-metingen gevonden binnen 5km van <strong>${veld.naam}</strong>.</div>`;
-        return;
-      }
-
-      countEl.textContent = `${match.length} meting${match.length!==1?'en':''} gevonden`;
-      const gem = (match.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / match.length).toFixed(1);
-
-      result.innerHTML = `
-        <div class="mb-3" style="font-size:.82rem;color:#6c757d">
-          Veld: <strong>${veld.naam}</strong> &nbsp;|&nbsp; Categorie <strong>${huidigCat}</strong>
-          (${catDef.min}–${catDef.max} mm) &nbsp;|&nbsp; Gem. sensor: <strong>${gem} cm</strong>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover mb-0" style="font-size:.83rem">
-            <thead style="background:transparent">
-              <tr>
-                <th class="ps-3" style="border:none">#</th>
-                <th style="border:none">Device</th>
-                <th style="border:none">Hoogte</th>
-                <th style="border:none">Status</th>
-                <th style="border:none">Locatie</th>
-                <th style="border:none">Tijdstip</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${match.map((m,i) => {
-                const h = m.gras_hoogte_cm;
-                const s = h > 12 ? 'bsh' : (h < 4 ? 'bsl' : 'bsok');
-                const stxt = h > 12 ? 'Te hoog' : (h < 4 ? 'Te laag' : 'OK');
-                const tijd = m.timestamp ? new Date(m.timestamp+'Z').toLocaleString('nl-NL') : '—';
-                return `<tr>
-                  <td class="ps-3 text-muted">${i+1}</td>
-                  <td style="font-size:.76rem">${m.device_id||'—'}</td>
-                  <td><strong style="color:${h>12?'#f44336':(h<4?'#ff9800':'#2e7d32')}">${h}</strong> cm</td>
-                  <td><span class="bs ${s}">${stxt}</span></td>
-                  <td style="font-size:.76rem;color:#adb5bd">${m.latitude?.toFixed(4)||'—'}°N, ${m.longitude?.toFixed(4)||'—'}°O</td>
-                  <td style="font-size:.76rem;color:#6c757d">${tijd}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>`;
-    })
-    .catch(() => { result.innerHTML = '<div class="text-center py-3 text-muted">Verbindingsfout.</div>'; });
+  result.innerHTML = '<div id="meting-veld-chart"></div>';
+  bouwVeldChart('#meting-veld-chart', veld, 280, true);
 }
 
 /* ═══════════════════════════════════════
@@ -2460,4 +2469,4 @@ fetch('/api/me')
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
