@@ -619,37 +619,66 @@
 
       <!-- ══ SENSOR METINGEN ══ -->
       <div id="page-metingen" class="page">
-        <div class="row g-3 mb-3" id="meting-stats"></div>
-        <div class="dc">
-          <div class="dch">
-            <i class="bi bi-broadcast" style="color:var(--g)"></i>
-            <h6>Alle sensormetingen</h6>
-            <span id="meting-count" class="ms-2 badge" style="background:var(--gp);color:var(--g);font-size:.72rem"></span>
-            <div class="ms-auto d-flex gap-2 align-items-center">
-              <span id="meting-refresh-lbl" style="font-size:.75rem;color:#adb5bd"></span>
-              <button class="btn btn-sm" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-size:.78rem;border-radius:9px;font-weight:600;padding:.4rem .9rem" onclick="laadMetingen()">
-                <i class="bi bi-arrow-clockwise"></i> Vernieuwen
-              </button>
+
+        <!-- OVERZICHT: stat cards + device kaarten -->
+        <div id="meting-overview">
+          <div class="row g-3 mb-3" id="meting-stats"></div>
+          <div class="dc">
+            <div class="dch">
+              <i class="bi bi-broadcast" style="color:var(--g)"></i>
+              <h6>Sensor Devices</h6>
+              <span id="meting-count" class="ms-2 badge" style="background:var(--gp);color:var(--g);font-size:.72rem"></span>
+              <div class="ms-auto d-flex gap-2 align-items-center">
+                <span id="meting-refresh-lbl" style="font-size:.75rem;color:#adb5bd"></span>
+                <button class="btn btn-sm" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-size:.78rem;border-radius:9px;font-weight:600;padding:.4rem .9rem" onclick="laadMetingen()">
+                  <i class="bi bi-arrow-clockwise"></i> Vernieuwen
+                </button>
+              </div>
+            </div>
+            <div class="dcb" id="meting-devices-grid">
+              <div class="text-center py-4 text-muted">Laden…</div>
             </div>
           </div>
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead style="background:transparent">
-                <tr>
-                  <th class="ps-3" style="border:none">#</th>
-                  <th style="border:none">Device</th>
-                  <th style="border:none">Grashoogte</th>
-                  <th style="border:none">Status</th>
-                  <th style="border:none">Locatie</th>
-                  <th style="border:none">Tijdstip</th>
-                </tr>
-              </thead>
-              <tbody id="meting-tbody">
-                <tr><td colspan="6" class="text-center py-4 text-muted">Laden…</td></tr>
-              </tbody>
-            </table>
+        </div>
+
+        <!-- DETAIL: metingen per device met live polling -->
+        <div id="meting-detail" style="display:none">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <button class="btn btn-sm" style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:9px;font-size:.82rem;font-weight:600" onclick="metingTerug()">
+              <i class="bi bi-arrow-left me-1"></i>Terug
+            </button>
+            <h6 class="mb-0 fw-bold" style="color:var(--gd)" id="detail-device-titel"></h6>
+            <span class="ms-auto badge d-flex align-items-center gap-1" style="background:var(--gp);color:var(--g);font-size:.74rem">
+              <span class="sensor-dot on" style="width:7px;height:7px"></span> Live &mdash; elke 5 sec
+            </span>
+          </div>
+          <div class="row g-3 mb-3" id="detail-stats"></div>
+          <div class="dc">
+            <div class="dch">
+              <i class="bi bi-table" style="color:var(--g)"></i>
+              <h6 id="detail-tabel-titel">Metingen</h6>
+              <span id="detail-count" class="ms-2 badge" style="background:var(--gp);color:var(--g);font-size:.72rem"></span>
+              <span id="detail-update-lbl" class="ms-auto" style="font-size:.75rem;color:#adb5bd"></span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead style="background:transparent">
+                  <tr>
+                    <th class="ps-3" style="border:none">#</th>
+                    <th style="border:none">Grashoogte</th>
+                    <th style="border:none">Status</th>
+                    <th style="border:none">Locatie</th>
+                    <th style="border:none">Tijdstip</th>
+                  </tr>
+                </thead>
+                <tbody id="detail-tbody">
+                  <tr><td colspan="5" class="text-center py-4 text-muted">Laden…</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+
       </div>
 
       <!-- ══ TEAM ══ -->
@@ -976,6 +1005,12 @@ function buildNav(role) {
    PAGE ROUTING
 ═══════════════════════════════════════ */
 function showPage(page) {
+  // Stop live polling als we van metingen-detail wegnavigeren
+  if (page !== 'metingen' && detailPollInterval) {
+    clearInterval(detailPollInterval); detailPollInterval = null; huidigDevice = null;
+    document.getElementById('meting-detail').style.display = 'none';
+    document.getElementById('meting-overview').style.display = 'block';
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -1802,52 +1837,150 @@ function importeerGeselecteerde() {
 /* ═══════════════════════════════════════
    SENSOR METINGEN
 ═══════════════════════════════════════ */
+let detailPollInterval = null;
+let huidigDevice = null;
+
 function laadMetingen() {
   document.getElementById('meting-refresh-lbl').textContent = 'Laden…';
   fetch('/api/metingen')
     .then(r => r.json())
     .then(data => {
-      const tbody = document.getElementById('meting-tbody');
-      const count = document.getElementById('meting-count');
-      count.textContent = data.length + ' metingen';
+      const totaal = data.length;
+      const devices = [...new Set(data.map(m => m.device_id).filter(Boolean))];
+      const gem = totaal ? Math.round(data.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / totaal) : 0;
+      const hoogCount = data.filter(m => m.gras_hoogte_cm > 12).length;
+      document.getElementById('meting-count').textContent = devices.length + ' device' + (devices.length !== 1 ? 's' : '');
 
-      if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nog geen metingen ontvangen van de sensor.</td></tr>';
+      document.getElementById('meting-stats').innerHTML = `
+        <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal metingen</div><div class="val">${totaal}</div><div class="sub">opgeslagen</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="sc pu"><div class="ic"><i class="bi bi-cpu"></i></div><div><div class="lbl">Actieve devices</div><div class="val">${devices.length}</div><div class="sub">uniek</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gem. hoogte</div><div class="val">${gem}<span style="font-size:.95rem">cm</span></div><div class="sub">gemiddeld</div></div></div></div>
+        <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoogCount}</div><div class="sub">&gt;12cm</div></div></div></div>`;
+
+      if (!totaal) {
+        document.getElementById('meting-devices-grid').innerHTML = '<div class="text-center py-5 text-muted" style="font-size:.88rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nog geen metingen ontvangen.</div>';
+        document.getElementById('meting-refresh-lbl').textContent = '';
         return;
       }
 
-      // Stat cards bovenaan
-      const gem = Math.round(data.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / data.length);
-      const hoogCount = data.filter(m => m.gras_hoogte_cm > 12).length;
-      document.getElementById('meting-stats').innerHTML = `
-        <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal metingen</div><div class="val">${data.length}</div><div class="sub">opgeslagen</div></div></div></div>
-        <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gem. hoogte</div><div class="val">${gem}<span style="font-size:.95rem">cm</span></div><div class="sub">gemiddeld</div></div></div></div>
-        <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoogCount}</div><div class="sub">&gt;12cm</div></div></div></div>
-        <div class="col-6 col-md-3"><div class="sc pu"><div class="ic"><i class="bi bi-cpu"></i></div><div><div class="lbl">Laatste device</div><div class="val" style="font-size:1rem">${data[0].device_id||'—'}</div><div class="sub">meest recent</div></div></div></div>`;
+      // Groepeer per device, nieuwste meting eerst
+      const perDevice = {};
+      data.forEach(m => {
+        const d = m.device_id || 'onbekend';
+        if (!perDevice[d]) perDevice[d] = [];
+        perDevice[d].push(m);
+      });
 
-      tbody.innerHTML = data.map((m, i) => {
-        const h = m.gras_hoogte_cm;
-        const status = h > 12 ? '<span class="bs bsh">Te hoog</span>' : (h < 4 ? '<span class="bs bsl">Te laag</span>' : '<span class="bs bsok">OK</span>');
-        const kleur = h > 12 ? '#f44336' : (h < 4 ? '#ff9800' : '#2e7d32');
-        const tijd = m.timestamp ? new Date(m.timestamp + 'Z').toLocaleString('nl-NL') : '—';
-        const lat = m.latitude != null ? m.latitude.toFixed(4) + '°N' : 'geen data beschikbaar';
-        const lon = m.longitude != null ? m.longitude.toFixed(4) + '°O' : '';
-        return `<tr>
-          <td class="ps-3 text-muted" style="font-size:.78rem">${data.length - i}</td>
-          <td><span class="badge" style="background:var(--gp);color:var(--g)">${m.device_id||'—'}</span></td>
-          <td><strong style="color:${kleur}">${h}</strong> cm</td>
-          <td>${status}</td>
-          <td style="font-size:.78rem;color:#adb5bd">${lat}, ${lon}</td>
-          <td style="font-size:.78rem">${tijd}</td>
-        </tr>`;
-      }).join('');
+      document.getElementById('meting-devices-grid').innerHTML =
+        '<div class="row g-3 p-2">' +
+        Object.entries(perDevice).map(([deviceId, metingen]) => {
+          const laatste = metingen[0];
+          const h = laatste.gras_hoogte_cm;
+          const status = h > 12 ? 'Te hoog' : (h < 4 ? 'Te laag' : 'OK');
+          const bsCls  = h > 12 ? 'bsh'     : (h < 4 ? 'bsl'     : 'bsok');
+          const kleur  = h > 12 ? '#f44336' : (h < 4 ? '#ff9800' : '#2e7d32');
+          const tijd   = laatste.timestamp ? new Date(laatste.timestamp + 'Z').toLocaleString('nl-NL') : '—';
+          return `<div class="col-md-4 col-lg-3">
+            <div class="dc" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+                 onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+                 onmouseout="this.style.transform='';this.style.boxShadow=''"
+                 onclick="toonMetingenVoorDevice('${deviceId}')">
+              <div class="dcb">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div style="width:38px;height:38px;border-radius:10px;background:var(--gp);display:flex;align-items:center;justify-content:center;color:var(--g);font-size:1.1rem">
+                    <i class="bi bi-cpu"></i>
+                  </div>
+                  <div style="min-width:0;flex:1">
+                    <div class="fw-bold" style="font-size:.88rem;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${deviceId}</div>
+                    <div style="font-size:.72rem;color:#adb5bd">${metingen.length} meting${metingen.length !== 1 ? 'en' : ''}</div>
+                  </div>
+                  <span class="bs ${bsCls}">${status}</span>
+                </div>
+                <div class="d-flex align-items-end justify-content-between mt-2">
+                  <div>
+                    <div style="font-size:.7rem;color:#adb5bd;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Laatste meting</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:${kleur};line-height:1">${h}<span style="font-size:.85rem;font-weight:400">cm</span></div>
+                  </div>
+                  <div style="text-align:right">
+                    <div style="font-size:.7rem;color:#adb5bd">${tijd}</div>
+                    <div style="font-size:.74rem;color:var(--g);font-weight:600;margin-top:.2rem">Bekijken <i class="bi bi-arrow-right"></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('') + '</div>';
 
       document.getElementById('meting-refresh-lbl').textContent = 'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
     })
     .catch(() => {
-      document.getElementById('meting-tbody').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Fout bij ophalen van metingen.</td></tr>';
+      document.getElementById('meting-devices-grid').innerHTML = '<div class="text-center py-4 text-danger">Fout bij ophalen van metingen.</div>';
       document.getElementById('meting-refresh-lbl').textContent = 'Fout bij laden';
     });
+}
+
+function toonMetingenVoorDevice(deviceId) {
+  huidigDevice = deviceId;
+  document.getElementById('meting-overview').style.display = 'none';
+  document.getElementById('meting-detail').style.display = 'block';
+  document.getElementById('detail-device-titel').textContent = 'Device: ' + deviceId;
+  document.getElementById('detail-tabel-titel').textContent = 'Metingen — ' + deviceId;
+  laadDetailMetingen();
+  if (detailPollInterval) clearInterval(detailPollInterval);
+  detailPollInterval = setInterval(laadDetailMetingen, 5000);
+}
+
+function laadDetailMetingen() {
+  fetch('/api/metingen')
+    .then(r => r.json())
+    .then(data => {
+      const metingen = data.filter(m => m.device_id === huidigDevice);
+      const count = metingen.length;
+      document.getElementById('detail-count').textContent = count + ' meting' + (count !== 1 ? 'en' : '');
+
+      if (count) {
+        const gem = Math.round(metingen.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / count);
+        const max = Math.max(...metingen.map(m => m.gras_hoogte_cm));
+        const min = Math.min(...metingen.map(m => m.gras_hoogte_cm));
+        document.getElementById('detail-stats').innerHTML = `
+          <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal</div><div class="val">${count}</div><div class="sub">metingen</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gemiddeld</div><div class="val">${gem}<span style="font-size:.95rem">cm</span></div><div class="sub">grashoogte</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-arrow-up"></i></div><div><div class="lbl">Maximum</div><div class="val">${max}<span style="font-size:.95rem">cm</span></div><div class="sub">hoogste</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc o"><div class="ic"><i class="bi bi-arrow-down"></i></div><div><div class="lbl">Minimum</div><div class="val">${min}<span style="font-size:.95rem">cm</span></div><div class="sub">laagste</div></div></div></div>`;
+      }
+
+      document.getElementById('detail-tbody').innerHTML = count
+        ? metingen.map((m, i) => {
+            const h = m.gras_hoogte_cm;
+            const status = h > 12 ? '<span class="bs bsh">Te hoog</span>' : (h < 4 ? '<span class="bs bsl">Te laag</span>' : '<span class="bs bsok">OK</span>');
+            const kleur = h > 12 ? '#f44336' : (h < 4 ? '#ff9800' : '#2e7d32');
+            const tijd = m.timestamp ? new Date(m.timestamp + 'Z').toLocaleString('nl-NL') : '—';
+            const lat = m.latitude != null ? m.latitude.toFixed(4) + '°N' : '—';
+            const lon = m.longitude != null ? ', ' + m.longitude.toFixed(4) + '°O' : '';
+            return `<tr>
+              <td class="ps-3 text-muted" style="font-size:.78rem">${count - i}</td>
+              <td><strong style="color:${kleur}">${h}</strong> cm</td>
+              <td>${status}</td>
+              <td style="font-size:.78rem;color:#adb5bd">${lat}${lon}</td>
+              <td style="font-size:.78rem">${tijd}</td>
+            </tr>`;
+          }).join('')
+        : '<tr><td colspan="5" class="text-center py-4 text-muted">Geen metingen gevonden.</td></tr>';
+
+      document.getElementById('detail-update-lbl').textContent =
+        'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    })
+    .catch(() => {
+      document.getElementById('detail-tbody').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Fout bij ophalen.</td></tr>';
+    });
+}
+
+function metingTerug() {
+  if (detailPollInterval) { clearInterval(detailPollInterval); detailPollInterval = null; }
+  huidigDevice = null;
+  document.getElementById('meting-detail').style.display = 'none';
+  document.getElementById('meting-overview').style.display = 'block';
+  laadMetingen();
 }
 
 /* ═══════════════════════════════════════
