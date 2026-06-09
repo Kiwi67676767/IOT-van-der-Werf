@@ -1306,6 +1306,9 @@ async function laadVeldenVanOSM() {
 }
 
 function actualiseerNaLaden() {
+  laadGebruikersLijsten(function(){ actualiseerNaLadenIntern(); });
+}
+function actualiseerNaLadenIntern() {
   updateMeldingenBadge();
   // Kaartbadge bijwerken
   document.querySelectorAll('.sb-badge').forEach(b => {
@@ -1535,8 +1538,19 @@ function toggleMeting() {
 function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
 function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
 
-const MACHINISTEN   = ['—','Machinist 1','Machinist 2'];
-const STAKEHOLDERS  = ['—','Gemeente Groningen','Sportpark Kardinge BV'];
+let MACHINISTEN  = ['—'];
+let STAKEHOLDERS = ['—'];
+
+function laadGebruikersLijsten(callback) {
+  fetch('/api/users', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(users){
+      MACHINISTEN  = ['—'].concat(users.filter(function(u){ return u.role === 'machinist'; }).map(function(u){ return u.name; }));
+      STAKEHOLDERS = ['—'].concat(users.filter(function(u){ return u.role === 'stakeholder'; }).map(function(u){ return u.name; }));
+      if (callback) callback();
+    })
+    .catch(function(){ if (callback) callback(); });
+}
 
 function renderVelden(data){
   const isAdmin = CU && CU.role === 'admin';
@@ -2311,6 +2325,7 @@ function maakGebruiker() {
       document.getElementById('nu-password').value = '';
       document.getElementById('nieuw-gebruiker-form').style.display = 'none';
       laadGebruikers();
+      laadGebruikersLijsten(function(){ renderVelden(VELDEN); });
     } else {
       errEl.textContent = d.error || 'Fout bij aanmaken.'; errEl.style.display = 'block';
     }
@@ -2361,6 +2376,7 @@ function slaEditOp() {
     if (ok) {
       bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
       laadGebruikers();
+      laadGebruikersLijsten(function(){ renderVelden(VELDEN); });
     } else {
       errEl.textContent = d.error || 'Fout bij opslaan.'; errEl.style.display = 'block';
     }
