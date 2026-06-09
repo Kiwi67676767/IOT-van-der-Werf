@@ -1539,8 +1539,8 @@ function renderVelden(data){
       <td>${v.loc}</td>
       <td style="color:#adb5bd;font-size:.78rem">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
       <td><strong style="color:${hKleur}">${v.hoogte}</strong> mm</td>
-      <td>${catSelect}</td>
       <td>${bsBadge(v.status)}</td>
+      <td>${catSelect}</td>
       <td>${prioBadge(v.prio)}</td>
       <td>${isAdmin ? machSelect  : v.machinist}</td>
       <td style="display:${isAdmin?'':'none'}">${stakeSelect}</td>
