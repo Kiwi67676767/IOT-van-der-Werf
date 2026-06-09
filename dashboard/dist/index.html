@@ -24,10 +24,15 @@
     body { font-family: 'Inter', sans-serif; background: #f4f6f4; margin: 0; overflow-x: hidden; }
 
     /* ── LOGIN ── */
+    #loading-screen {
+      position: fixed; inset: 0; z-index: 10000;
+      background: linear-gradient(135deg, var(--gd) 0%, var(--g) 55%, var(--gl) 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
     #login-screen {
       position: fixed; inset: 0; z-index: 9999;
       background: linear-gradient(135deg, var(--gd) 0%, var(--g) 55%, var(--gl) 100%);
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
     }
     .lcard {
       background: #fff; border-radius: 18px; padding: 2.5rem 2.2rem;
@@ -247,6 +252,14 @@
   </style>
 </head>
 <body>
+
+<!-- ═══════════ LOADING ═══════════ -->
+<div id="loading-screen">
+  <div style="text-align:center;color:#fff">
+    <div class="spinner-border mb-3" style="width:2.2rem;height:2.2rem;border-width:3px" role="status"></div>
+    <div style="font-weight:600;font-size:.95rem;opacity:.9">Laden…</div>
+  </div>
+</div>
 
 <!-- ═══════════ LOGIN ═══════════ -->
 <div id="login-screen">
@@ -942,20 +955,6 @@ function doLogout() {
   });
 }
 
-// Herstel sessie na refresh
-(function() {
-  const saved = sessionStorage.getItem('cu');
-  if (saved) {
-    CU = JSON.parse(saved);
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('sb-name').textContent=CU.name;
-    document.getElementById('sb-role').textContent=CU.label;
-    document.getElementById('sb-av').textContent=CU.initials;
-    buildNav(CU.role);
-    initApp();
-  }
-})();
 
 /* ═══════════════════════════════════════
    NAV
@@ -1989,11 +1988,21 @@ function saveSettings(){
   alert(`✅ Instellingen opgeslagen\nMin: ${min}mm | Gewenst: ${tgt}mm | Max: ${max}mm`);
 }
 
-// Sessie controleren bij laden — blijft ingelogd na refresh
+// Sessie controleren bij laden — geen flash van inlogscherm
 fetch('/api/me')
   .then(r => r.ok ? r.json() : null)
-  .then(user => { if (user) zetGebruikerIn(user); })
-  .catch(() => {});
+  .then(user => {
+    document.getElementById('loading-screen').style.display = 'none';
+    if (user) {
+      zetGebruikerIn(user);
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+  })
+  .catch(() => {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  });
 </script>
 </body>
 </html>

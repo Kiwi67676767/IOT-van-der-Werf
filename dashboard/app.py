@@ -89,7 +89,7 @@ with app.app_context():
         for u in INITIELE_GEBRUIKERS:
             db.session.add(User(
                 username      = u['username'],
-                password_hash = generate_password_hash(u['password']),
+                password_hash = generate_password_hash(u['password'], method='bcrypt'),
                 name          = u['name'],
                 role          = u['role'],
                 initials      = u['initials'],
@@ -110,6 +110,10 @@ def login():
     password = data.get('password') or ''
     user = User.query.filter_by(username=username).first()
     if user and check_password_hash(user.password_hash, password):
+        # Transparante migratie: old-style hashes ophogen naar bcrypt
+        if not user.password_hash.startswith('bcrypt$'):
+            user.password_hash = generate_password_hash(password, method='bcrypt')
+            db.session.commit()
         session['user_id'] = user.id
         return jsonify(user.to_dict()), 200
     return jsonify({'error': 'Verkeerde gebruikersnaam of wachtwoord'}), 401
@@ -163,7 +167,7 @@ def create_user():
     label = {'admin': 'Beheerder', 'machinist': 'Machinist', 'stakeholder': 'Stakeholder'}.get(role, role)
     user = User(
         username=username,
-        password_hash=generate_password_hash(password),
+        password_hash=generate_password_hash(password, method='bcrypt'),
         name=name, role=role, initials=initials, label=label,
         contract_name=data.get('contract_name')
     )
@@ -190,7 +194,7 @@ def update_user(user_id):
     if data.get('contract_name') is not None:
         user.contract_name = data['contract_name'] or None
     if data.get('password'):
-        user.password_hash = generate_password_hash(data['password'])
+        user.password_hash = generate_password_hash(data['password'], method='bcrypt')
     db.session.commit()
     return jsonify({'status': 'ok'})
 
