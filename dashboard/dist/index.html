@@ -874,6 +874,10 @@
       <div class="modal-body">
         <input type="hidden" id="edit-id" />
         <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Gebruikersnaam</label>
+          <input id="edit-username" type="text" class="form-control" placeholder="bijv. machinist1" autocomplete="off" />
+        </div>
+        <div class="mb-3">
           <label class="form-label fw-semibold" style="font-size:.83rem">Volledige naam</label>
           <input id="edit-name" type="text" class="form-control" />
         </div>
@@ -2316,6 +2320,7 @@ function maakGebruiker() {
 function openEditGebruiker(id, username, name, role) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-username-lbl').textContent = username;
+  document.getElementById('edit-username').value = username;
   document.getElementById('edit-name').value = name;
   document.getElementById('edit-role').value = role;
   document.getElementById('edit-password').value = '';
@@ -2331,6 +2336,7 @@ function toggleEditContract() {
 
 function slaEditOp() {
   const id       = document.getElementById('edit-id').value;
+  const username = document.getElementById('edit-username').value.trim().toLowerCase();
   const name     = document.getElementById('edit-name').value.trim();
   const role     = document.getElementById('edit-role').value;
   const contract = document.getElementById('edit-contract').value.trim();
@@ -2338,10 +2344,11 @@ function slaEditOp() {
   const errEl    = document.getElementById('edit-error');
   errEl.style.display = 'none';
 
+  if (!username) { errEl.textContent = 'Gebruikersnaam is verplicht.'; errEl.style.display = 'block'; return; }
   if (!name) { errEl.textContent = 'Naam is verplicht.'; errEl.style.display = 'block'; return; }
   if (password && password.length < 6) { errEl.textContent = 'Wachtwoord minimaal 6 tekens.'; errEl.style.display = 'block'; return; }
 
-  const body = {name, role, contract_name: contract || null};
+  const body = {username, name, role, contract_name: contract || null};
   if (password) body.password = password;
 
   fetch(`/api/users/${id}`, {

@@ -242,6 +242,12 @@ def update_user(user_id):
     if not user:
         return jsonify({'error': 'Gebruiker niet gevonden'}), 404
     data = request.get_json()
+    if data.get('username'):
+        new_username = data['username'].strip().lower()
+        if new_username != user.username:
+            if User.query.filter_by(username=new_username).first():
+                return jsonify({'error': 'Gebruikersnaam is al in gebruik'}), 400
+            user.username = new_username
     if data.get('name'):
         user.name = data['name']
         user.initials = ''.join(w[0].upper() for w in data['name'].split()[:2])
