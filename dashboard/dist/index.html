@@ -54,13 +54,6 @@
     .btn-lgi:hover { background: var(--gd); }
     #login-error { color: #dc3545; font-size: .84rem; text-align: center; margin-top: .6rem; display: none; }
     .lcard-hint { color: #adb5bd; font-size: .76rem; text-align: center; margin-top: 1rem; line-height: 1.7; }
-    .role-chips { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.2rem; }
-    .role-chip {
-      background: var(--gp); color: var(--g); font-size: .72rem; font-weight: 600;
-      padding: .25rem .75rem; border-radius: 20px; cursor: pointer; border: 1.5px solid transparent;
-      transition: border-color .15s;
-    }
-    .role-chip:hover { border-color: var(--g); }
 
     /* ── NOTIFICATIES BELL ── */
     .notif-btn { position:relative; background:none; border:none; cursor:pointer; padding:4px 8px; color:#6c757d; }
@@ -286,12 +279,6 @@
     <h2>Van der Werf</h2>
     <p class="sub">Groenvoorzieningen &mdash; Dashboard</p>
 
-    <div class="role-chips">
-      <span class="role-chip" onclick="fillDemo('admin','admin789')">🔧 Admin</span>
-      <span class="role-chip" onclick="fillDemo('machinist1','groen123')">🚜 Machinist</span>
-      <span class="role-chip" onclick="fillDemo('stakeholder1','stake123')">📋 Stakeholder</span>
-    </div>
-
     <form onsubmit="doLogin(event)">
       <div class="mb-3">
         <label class="form-label fw-semibold" style="font-size:.83rem">Gebruikersnaam</label>
@@ -311,10 +298,6 @@
       <button class="btn-lgi" type="submit">Inloggen</button>
       <div id="login-error">Verkeerde gebruikersnaam of wachtwoord</div>
     </form>
-    <p class="lcard-hint">
-      admin / admin789 &nbsp;|&nbsp; machinist1 / groen123 &nbsp;|&nbsp; machinist2 / groen456<br>
-      stakeholder1 / stake123 &nbsp;|&nbsp; stakeholder2 / stake456
-    </p>
   </div>
 </div>
 
@@ -917,15 +900,8 @@
 /* ═══════════════════════════════════════
    DATA
 ═══════════════════════════════════════ */
-const ARCGIS_KEY = 'AAPTafbApNhhgWsbWXgebKtvh5g..XByo26RzNv5EaWx46_wxzP_CzYxiP94qq-SzdlICGXDOPYON5grXjqOdAEdTGsQ5QDq2BE6n3LfEKElP4jBSlKHlRtbUEXDpqYaXW9DM5yUXhpB19gDYJG95o3g9u_-UCzEjQ_jgd1K_mkxRQ4EV4Tbj6Zj3gCvJ_e0laRc4pfDpFHsYIwGN3Ng-Sfr1YMLm72RUtr2wlNJsM5Ey7GS-3wTxvxd_u8cdVeRrpxnv6R07jG1iB-CkheEi-YoWAT1_3OoDQU3d';
+let ARCGIS_KEY = ''; // geladen via /api/config na login
 
-const USERS = {
-  admin:        { pass:'admin789',  name:'Beheerder',      role:'admin',       initials:'AD', label:'Beheerder' },
-  machinist1:   { pass:'groen123',  name:'Machinist 1',    role:'machinist',   initials:'M1', label:'Machinist', assignedVelden: null },
-  machinist2:   { pass:'groen456',  name:'Machinist 2',    role:'machinist',   initials:'M2', label:'Machinist', assignedVelden: null },
-  stakeholder1: { pass:'stake123',  name:'Gemeente Groningen', role:'stakeholder', initials:'GG', label:'Stakeholder', assignedVelden:[1,2,3,6,9,10,11,12], contractName:'Gemeente Groningen' },
-  stakeholder2: { pass:'stake456',  name:'Sportpark Kardinge', role:'stakeholder', initials:'SK', label:'Stakeholder', assignedVelden:[4,5,13,14], contractName:'Sportpark Kardinge BV' },
-};
 
 // Grasvelden — dynamisch geladen vanuit OpenStreetMap (Overpass API)
 let VELDEN = [];
@@ -1025,7 +1001,6 @@ let chartsInit = false;
 /* ═══════════════════════════════════════
    LOGIN / LOGOUT
 ═══════════════════════════════════════ */
-function fillDemo(u, p) { document.getElementById('u').value=u; document.getElementById('p').value=p; }
 function togglePass() {
   const i=document.getElementById('p'), e=document.getElementById('eye-ic');
   i.type = i.type==='password'?'text':'password';
@@ -1040,7 +1015,10 @@ function zetGebruikerIn(user) {
   document.getElementById('sb-role').textContent=CU.label;
   document.getElementById('sb-av').textContent=CU.initials;
   buildNav(CU.role);
-  initApp();
+  fetch('/api/config', {credentials:'same-origin'})
+    .then(function(r){ return r.ok ? r.json() : {}; })
+    .then(function(cfg){ if(cfg.arcgis_key) ARCGIS_KEY = cfg.arcgis_key; })
+    .finally(function(){ initApp(); });
 }
 
 function doLogin(e) {
@@ -2010,10 +1988,9 @@ function laadMetingen() {
       document.getElementById('meting-count').textContent = devices.length + ' device' + (devices.length !== 1 ? 's' : '');
 
       document.getElementById('meting-stats').innerHTML = `
-        <div class="col-6 col-md-3"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal metingen</div><div class="val">${totaal}</div><div class="sub">opgeslagen</div></div></div></div>
-        <div class="col-6 col-md-3"><div class="sc pu"><div class="ic"><i class="bi bi-cpu"></i></div><div><div class="lbl">Actieve devices</div><div class="val">${devices.length}</div><div class="sub">uniek</div></div></div></div>
-        <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-rulers"></i></div><div><div class="lbl">Gem. hoogte</div><div class="val">${gem}<span style="font-size:.95rem">cm</span></div><div class="sub">gemiddeld</div></div></div></div>
-        <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoogCount}</div><div class="sub">&gt;12cm</div></div></div></div>`;
+        <div class="col-6 col-md-4"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal metingen</div><div class="val">${totaal}</div><div class="sub">opgeslagen</div></div></div></div>
+        <div class="col-6 col-md-4"><div class="sc pu"><div class="ic"><i class="bi bi-cpu"></i></div><div><div class="lbl">Actieve devices</div><div class="val">${devices.length}</div><div class="sub">uniek</div></div></div></div>
+        <div class="col-6 col-md-4"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoogCount}</div><div class="sub">&gt;12cm</div></div></div></div>`;
 
       if (!totaal) {
         document.getElementById('meting-devices-grid').innerHTML = '<div class="text-center py-5 text-muted" style="font-size:.88rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nog geen metingen ontvangen.</div>';
@@ -2483,4 +2460,4 @@ fetch('/api/me')
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      

@@ -27,6 +27,9 @@ DIST_DIR = os.path.join(BASE_DIR, 'dist')
 # Secret key voor sessies
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-verander-dit')
 
+# ArcGIS API key — stel in als omgevingsvariabele ARCGIS_KEY op Railway
+ARCGIS_KEY = os.environ.get('ARCGIS_KEY', '')
+
 # Database instellen via Railway's DATABASE_URL, fallback naar SQLite lokaal
 _db_url = os.environ.get('DATABASE_URL', '')
 if _db_url.startswith('postgres://'):
@@ -180,6 +183,13 @@ def login():
 def logout():
     session.clear()
     return jsonify({'status': 'ok'})
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    return jsonify({'arcgis_key': ARCGIS_KEY})
 
 
 @app.route('/api/me', methods=['GET'])
