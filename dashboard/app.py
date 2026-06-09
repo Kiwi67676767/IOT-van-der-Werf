@@ -66,6 +66,38 @@ class User(db.Model):
         }
 
 
+class Veld(db.Model):
+    __tablename__ = 'velden'
+    id         = db.Column(db.Integer, primary_key=True)
+    naam       = db.Column(db.String(200), nullable=False)
+    loc        = db.Column(db.String(200))
+    lat        = db.Column(db.Float)
+    lng        = db.Column(db.Float)
+    hoogte     = db.Column(db.Integer, default=80)
+    status     = db.Column(db.String(50), default='OK')
+    prio       = db.Column(db.String(20), default='Laag')
+    machinist  = db.Column(db.String(100), default='—')
+    stakeholder = db.Column(db.String(100), default='—')
+    categorie  = db.Column(db.String(5), default='C')
+    rings      = db.Column(db.Text)    # JSON polygoon-rings
+
+    def to_dict(self):
+        return {
+            'id':         self.id,
+            'naam':       self.naam,
+            'loc':        self.loc or '',
+            'lat':        self.lat or 0,
+            'lng':        self.lng or 0,
+            'hoogte':     self.hoogte or 0,
+            'status':     self.status or 'OK',
+            'prio':       self.prio or 'Laag',
+            'machinist':  self.machinist or '—',
+            'stakeholder': self.stakeholder or '—',
+            'categorie':  self.categorie or 'C',
+            'rings':      json.loads(self.rings) if self.rings else None,
+        }
+
+
 class Meting(db.Model):
     __tablename__ = 'metingen'
     id            = db.Column(db.Integer, primary_key=True)
@@ -113,6 +145,17 @@ with app.app_context():
             ))
         db.session.commit()
         print("Gebruikers aangemaakt in database.")
+    else:
+        # Herstel-migratie: reset seed-wachtwoorden die corrupt zijn geraakt
+        gereset = 0
+        for u in INITIELE_GEBRUIKERS:
+            db_user = User.query.filter_by(username=u['username']).first()
+            if db_user and not verify_password(u['password'], db_user.password_hash):
+                db_user.password_hash = hash_password(u['password'])
+                gereset += 1
+                print(f"Wachtwoord gereset voor {u['username']}")
+        if gereset:
+            db.session.commit()
 
 
 # ── AUTH ROUTES ──
@@ -224,6 +267,106 @@ def delete_user(user_id):
     if not user:
         return jsonify({'error': 'Gebruiker niet gevonden'}), 404
     db.session.delete(user)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
+# ── VELDEN API ──
+
+@app.route('/api/velden', methods=['GET'])
+def get_velden():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    velden = Veld.query.order_by(Veld.id).all()
+    return jsonify([v.to_dict() for v in velden])
+
+
+@app.route('/api/velden', methods=['POST'])
+def create_veld():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    data = request.get_json()
+    if not data or not data.get('naam'):
+        return jsonify({'error': 'naam is verplicht'}), 400
+    veld = Veld(
+        naam       = data['naam'],
+        loc        = data.get('loc', ''),
+        lat        = data.get('lat', 0),
+        lng        = data.get('lng', 0),
+        hoogte     = data.get('hoogte', 80),
+        status     = data.get('status', 'OK'),
+        prio       = data.get('prio', 'Laag'),
+        machinist  = data.get('machinist', '—'),
+        stakeholder = data.get('stakeholder', '—'),
+        categorie  = data.get('categorie', 'C'),
+        rings      = json.dumps(data['rings']) if data.get('rings') else None,
+    )
+    db.session.add(veld)
+    db.session.commit()
+    return jsonify(veld.to_dict()), 201
+
+
+@app.route('/api/velden/bulk', methods=['POST'])
+def bulk_velden():
+    """Importeer meerdere velden tegelijk; bestaande (zelfde naam+loc) worden overgeslagen."""
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    items = request.get_json()
+    if not isinstance(items, list):
+        return jsonify({'error': 'Verwacht een array'}), 400
+    nieuw = 0
+    for d in items:
+        if not d.get('naam'):
+            continue
+        bestaat = Veld.query.filter_by(naam=d['naam'], loc=d.get('loc', '')).first()
+        if bestaat:
+            continue
+        v = Veld(
+            naam       = d['naam'],
+            loc        = d.get('loc', ''),
+            lat        = d.get('lat', 0),
+            lng        = d.get('lng', 0),
+            hoogte     = d.get('hoogte', 80),
+            status     = d.get('status', 'OK'),
+            prio       = d.get('prio', 'Laag'),
+            machinist  = d.get('machinist', '—'),
+            stakeholder = d.get('stakeholder', '—'),
+            categorie  = d.get('categorie', 'C'),
+            rings      = json.dumps(d['rings']) if d.get('rings') else None,
+        )
+        db.session.add(v)
+        nieuw += 1
+    db.session.commit()
+    return jsonify({'nieuw': nieuw})
+
+
+@app.route('/api/velden/<int:veld_id>', methods=['PUT'])
+def update_veld(veld_id):
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    veld = Veld.query.get(veld_id)
+    if not veld:
+        return jsonify({'error': 'Niet gevonden'}), 404
+    data = request.get_json()
+    for attr in ('naam', 'loc', 'lat', 'lng', 'hoogte', 'status', 'prio',
+                 'machinist', 'stakeholder', 'categorie'):
+        if attr in data:
+            setattr(veld, attr, data[attr])
+    if 'rings' in data:
+        veld.rings = json.dumps(data['rings']) if data['rings'] else None
+    db.session.commit()
+    return jsonify(veld.to_dict())
+
+
+@app.route('/api/velden/<int:veld_id>', methods=['DELETE'])
+def delete_veld(veld_id):
+    me = User.query.get(session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    veld = Veld.query.get(veld_id)
+    if not veld:
+        return jsonify({'error': 'Niet gevonden'}), 404
+    db.session.delete(veld)
     db.session.commit()
     return jsonify({'status': 'ok'})
 
