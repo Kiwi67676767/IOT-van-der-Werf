@@ -160,6 +160,14 @@ with app.app_context():
         if gereset:
             db.session.commit()
 
+    # Herstel: zorg dat gebruiker 'admin' altijd de admin-rol heeft
+    admin_user = User.query.filter_by(username='admin').first()
+    if admin_user and admin_user.role != 'admin':
+        admin_user.role = 'admin'
+        admin_user.label = 'Beheerder'
+        db.session.commit()
+        print("Rol van 'admin' hersteld naar beheerder.")
+
     # Seed demo-metingen als de tabel leeg is en er velden zijn
     if Meting.query.count() == 0:
         import random
@@ -291,7 +299,12 @@ def update_user(user_id):
     if data.get('name'):
         user.name = data['name']
         user.initials = ''.join(w[0].upper() for w in data['name'].split()[:2])
-    if data.get('role'):
+    if data.get('role') and data['role'] != user.role:
+        # Voorkom dat de laatste admin zijn rol kwijtraakt
+        if user.role == 'admin':
+            admin_count = User.query.filter_by(role='admin').count()
+            if admin_count <= 1:
+                return jsonify({'error': 'Er moet altijd minimaal één beheerder zijn.'}), 400
         user.role = data['role']
         user.label = {'admin': 'Beheerder', 'machinist': 'Machinist', 'stakeholder': 'Stakeholder'}.get(data['role'], data['role'])
     if data.get('contract_name') is not None:
