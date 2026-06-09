@@ -160,13 +160,16 @@ with app.app_context():
         if gereset:
             db.session.commit()
 
-    # Herstel: zorg dat gebruiker 'admin' altijd de admin-rol heeft
+    # Herstel: zorg dat gebruiker 'admin' altijd de admin-rol heeft + wachtwoord reset
     admin_user = User.query.filter_by(username='admin').first()
-    if admin_user and admin_user.role != 'admin':
-        admin_user.role = 'admin'
-        admin_user.label = 'Beheerder'
+    if admin_user:
+        if admin_user.role != 'admin':
+            admin_user.role = 'admin'
+            admin_user.label = 'Beheerder'
+            print("Rol van 'admin' hersteld naar beheerder.")
+        admin_user.password_hash = hash_password('admin789')
         db.session.commit()
-        print("Rol van 'admin' hersteld naar beheerder.")
+        print("Wachtwoord van 'admin' teruggezet naar admin789.")
 
     # Seed demo-metingen als de tabel leeg is en er velden zijn
     if Meting.query.count() == 0:
