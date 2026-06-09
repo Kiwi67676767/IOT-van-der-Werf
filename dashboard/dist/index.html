@@ -1182,7 +1182,7 @@ function bouwVeldChart(selector, veld, hoogte, toonTabel) {
 
       var huidigCat = veldCategorie(veld.id);
       var catDef = CAT_INST[huidigCat] || CAT_DEFAULTS[huidigCat];
-      var target = (catDef.target || catDef.min) * 10; // cm → mm
+      var target = catDef.target || catDef.min; // al in mm
 
       if (!match.length) {
         el.innerHTML = '<div class="text-center py-4 text-muted" style="font-size:.86rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Geen metingen gevonden voor <strong>' + veld.naam + '</strong>.</div>';

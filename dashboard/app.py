@@ -171,35 +171,45 @@ with app.app_context():
         db.session.commit()
         print("Wachtwoord van 'admin' teruggezet naar admin789.")
 
-    # Seed demo-metingen als de tabel leeg is en er velden zijn
-    if Meting.query.count() == 0:
-        import random
-        import datetime as dt
-        velden = Veld.query.all()
-        if velden:
-            now = datetime.utcnow()
-            cat_target = {'A': 4.0, 'B': 7.0, 'C': 9.0, 'D': 14.0}
-            for veld in velden:
-                target_cm = cat_target.get(veld.categorie or 'C', 9.0)
-                device_id = 'sensor-{:03d}'.format(veld.id)
-                for dag in range(89, -1, -1):
-                    ts = (now - dt.timedelta(days=dag)).replace(
-                        hour=random.randint(7, 16),
-                        minute=random.randint(0, 59),
-                        second=0, microsecond=0
-                    )
-                    fase = dag % 14
-                    base = target_cm * 0.6 + (target_cm * 0.9 * fase / 14)
-                    hoogte = round(max(1.0, base + random.gauss(0, target_cm * 0.08)), 1)
-                    db.session.add(Meting(
-                        device_id=device_id,
-                        gras_hoogte_cm=hoogte,
-                        latitude=veld.lat + random.uniform(-0.001, 0.001),
-                        longitude=veld.lng + random.uniform(-0.001, 0.001),
-                        timestamp=ts,
-                    ))
-            db.session.commit()
-            print('Demo-metingen aangemaakt voor {} veld(en).'.format(len(velden)))
+    # Seed demo-metingen per veld als er nog geen metingen in de buurt zijn
+    import random
+    import datetime as dt
+    velden_seed = Veld.query.all()
+    MAX_DIST_SEED = 0.05
+    cat_target_seed = {'A': 4.0, 'B': 7.0, 'C': 9.0, 'D': 14.0}
+    geseeded = 0
+    for veld in velden_seed:
+        if not veld.lat or not veld.lng:
+            continue
+        heeft_metingen = Meting.query.filter(
+            Meting.latitude.between(veld.lat - MAX_DIST_SEED, veld.lat + MAX_DIST_SEED),
+            Meting.longitude.between(veld.lng - MAX_DIST_SEED, veld.lng + MAX_DIST_SEED)
+        ).first()
+        if heeft_metingen:
+            continue
+        now = datetime.utcnow()
+        target_cm = cat_target_seed.get(veld.categorie or 'C', 9.0)
+        device_id = 'sensor-{:03d}'.format(veld.id)
+        for dag in range(89, -1, -1):
+            ts = (now - dt.timedelta(days=dag)).replace(
+                hour=random.randint(7, 16),
+                minute=random.randint(0, 59),
+                second=0, microsecond=0
+            )
+            fase = dag % 14
+            base = target_cm * 0.6 + (target_cm * 0.9 * fase / 14)
+            hoogte = round(max(1.0, base + random.gauss(0, target_cm * 0.08)), 1)
+            db.session.add(Meting(
+                device_id=device_id,
+                gras_hoogte_cm=hoogte,
+                latitude=veld.lat + random.uniform(-0.001, 0.001),
+                longitude=veld.lng + random.uniform(-0.001, 0.001),
+                timestamp=ts,
+            ))
+        geseeded += 1
+    if geseeded:
+        db.session.commit()
+        print('Demo-metingen aangemaakt voor {} veld(en).'.format(geseeded))
 
 
 # ── AUTH ROUTES ──
