@@ -3,7 +3,21 @@ import os
 import json
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
+import bcrypt as _bcrypt
+
+def hash_password(password: str) -> str:
+    return _bcrypt.hashpw(password.encode('utf-8'), _bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    # Bcrypt hashes beginnen met $2b$ of $2a$
+    if hashed.startswith('$2b$') or hashed.startswith('$2a$'):
+        return _bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    # Fallback voor oude werkzeug-hashes (transparante migratie)
+    return check_password_hash(hashed, password)
+
+def is_bcrypt_hash(hashed: str) -> bool:
+    return hashed.startswith('$2b$') or hashed.startswith('$2a$')
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
 
@@ -89,7 +103,7 @@ with app.app_context():
         for u in INITIELE_GEBRUIKERS:
             db.session.add(User(
                 username      = u['username'],
-                password_hash = generate_password_hash(u['password'], method='bcrypt'),
+                password_hash = hash_password(u['password']),
                 name          = u['name'],
                 role          = u['role'],
                 initials      = u['initials'],
@@ -109,10 +123,10 @@ def login():
     username = (data.get('username') or '').strip().lower()
     password = data.get('password') or ''
     user = User.query.filter_by(username=username).first()
-    if user and check_password_hash(user.password_hash, password):
-        # Transparante migratie: old-style hashes ophogen naar bcrypt
-        if not user.password_hash.startswith('bcrypt$'):
-            user.password_hash = generate_password_hash(password, method='bcrypt')
+    if user and verify_password(password, user.password_hash):
+        # Transparante migratie naar bcrypt als het nog een oud werkzeug-hash is
+        if not is_bcrypt_hash(user.password_hash):
+            user.password_hash = hash_password(password)
             db.session.commit()
         session['user_id'] = user.id
         return jsonify(user.to_dict()), 200
@@ -167,7 +181,7 @@ def create_user():
     label = {'admin': 'Beheerder', 'machinist': 'Machinist', 'stakeholder': 'Stakeholder'}.get(role, role)
     user = User(
         username=username,
-        password_hash=generate_password_hash(password, method='bcrypt'),
+        password_hash=hash_password(password),
         name=name, role=role, initials=initials, label=label,
         contract_name=data.get('contract_name')
     )
@@ -194,7 +208,7 @@ def update_user(user_id):
     if data.get('contract_name') is not None:
         user.contract_name = data['contract_name'] or None
     if data.get('password'):
-        user.password_hash = generate_password_hash(data['password'], method='bcrypt')
+        user.password_hash = hash_password(data['password'])
     db.session.commit()
     return jsonify({'status': 'ok'})
 
