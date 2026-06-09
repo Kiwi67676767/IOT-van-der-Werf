@@ -62,6 +62,24 @@
     }
     .role-chip:hover { border-color: var(--g); }
 
+    /* ── NOTIFICATIES BELL ── */
+    .notif-btn { position:relative; background:none; border:none; cursor:pointer; padding:4px 8px; color:#6c757d; }
+    .notif-btn:hover { color:var(--g); }
+    .notif-badge { position:absolute; top:0; right:2px; background:#dc3545; color:#fff; border-radius:50%;
+      font-size:.6rem; font-weight:700; min-width:16px; height:16px; display:flex; align-items:center;
+      justify-content:center; line-height:1; padding:0 3px; }
+    .notif-dropdown { position:fixed; top:56px; right:1rem; width:320px; background:#fff; border-radius:14px;
+      box-shadow:0 8px 32px rgba(0,0,0,.18); z-index:9999; display:none; overflow:hidden; }
+    .notif-dropdown.open { display:block; }
+    .notif-header { background:var(--g); color:#fff; padding:.7rem 1rem; font-weight:600; font-size:.88rem;
+      display:flex; align-items:center; justify-content:space-between; }
+    .notif-list { max-height:320px; overflow-y:auto; }
+    .notif-item { padding:.7rem 1rem; border-bottom:1px solid #f0f0f0; font-size:.83rem; display:flex; gap:.6rem; align-items:flex-start; }
+    .notif-item:last-child { border-bottom:none; }
+    .notif-item .ni-icon { font-size:1.1rem; flex-shrink:0; margin-top:1px; }
+    .notif-empty { padding:1.5rem 1rem; text-align:center; color:#adb5bd; font-size:.84rem; }
+
+
     /* ── SIDEBAR ── */
     #sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; width: var(--sw);
@@ -264,7 +282,7 @@
 <!-- ═══════════ LOGIN ═══════════ -->
 <div id="login-screen">
   <div class="lcard">
-    <div class="lcard-logo"><i class="bi bi-flower2"></i></div>
+    <div class="lcard-logo"><img src="https://groenwerf.nl/wp-content/uploads/2023/10/cropped-favicon-32x32.png" alt="GroenWerf" style="width:40px;height:40px;object-fit:contain;border-radius:4px"></div>
     <h2>Van der Werf</h2>
     <p class="sub">Groenvoorzieningen &mdash; Dashboard</p>
 
@@ -306,7 +324,7 @@
   <!-- SIDEBAR -->
   <aside id="sidebar">
     <div class="sb-brand">
-      <div class="sb-brand-icon"><i class="bi bi-flower2"></i></div>
+      <div class="sb-brand-icon"><img src="https://groenwerf.nl/wp-content/uploads/2023/10/cropped-favicon-32x32.png" alt="GroenWerf" style="width:26px;height:26px;object-fit:contain;border-radius:3px"></div>
       <div class="sb-brand-text">Van der Werf <small>Groenvoorzieningen</small></div>
     </div>
     <nav class="sb-nav" id="sb-nav-content"></nav>
@@ -333,6 +351,17 @@
           <span class="sensor-dot off" id="s-dot"></span>
           <span id="s-label" style="font-size:.78rem;color:#6c757d;margin-left:4px">Sensor inactief</span>
         </span>
+        <button class="notif-btn" id="notif-btn" onclick="toggleNotifDropdown()" title="Meldingen">
+          <i class="bi bi-bell-fill" style="font-size:1.1rem"></i>
+          <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+        </button>
+        <div class="notif-dropdown" id="notif-dropdown">
+          <div class="notif-header">
+            <span><i class="bi bi-bell-fill me-2"></i>Actieve meldingen</span>
+            <button onclick="sluitNotifDropdown()" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="notif-list" id="notif-list"></div>
+        </div>
         <span class="badge rounded-pill" style="background:var(--gp);color:var(--g);font-size:.76rem">
           <i class="bi bi-circle-fill me-1" style="font-size:.4rem"></i>Live
         </span>
@@ -1273,6 +1302,7 @@ async function laadVeldenVanOSM() {
 }
 
 function actualiseerNaLaden() {
+  updateMeldingenBadge();
   // Kaartbadge bijwerken
   document.querySelectorAll('.sb-badge').forEach(b => {
     if (/^\d+$/.test(b.textContent)) b.textContent = VELDEN.length;
@@ -2341,15 +2371,76 @@ function verwijderGebruiker(id, username) {
    INSTELLINGEN
 ═══════════════════════════════════════ */
 function saveSettings(){
-  const max=document.getElementById('set-max').value;
-  const tgt=document.getElementById('set-target').value;
-  const min=document.getElementById('set-min').value;
-  if(parseInt(min)>=parseInt(tgt)||parseInt(tgt)>=parseInt(max)){
-    alert('⚠️ Volgorde klopt niet: Min < Gewenst < Max');
-    return;
-  }
-  alert(`✅ Instellingen opgeslagen\nMin: ${min}mm | Gewenst: ${tgt}mm | Max: ${max}mm`);
+  const prefs = {
+    n1: document.getElementById('n1')?.checked ?? true,
+    n2: document.getElementById('n2')?.checked ?? true,
+    n3: document.getElementById('n3')?.checked ?? false,
+    n4: document.getElementById('n4')?.checked ?? true,
+  };
+  localStorage.setItem('notif_prefs', JSON.stringify(prefs));
+  toonToast('✅ Meldingsinstellingen opgeslagen');
+  updateMeldingenBadge();
 }
+function laadNotifPrefs() {
+  try { return JSON.parse(localStorage.getItem('notif_prefs')) || {n1:true,n2:true,n3:false,n4:true}; }
+  catch(e) { return {n1:true,n2:true,n3:false,n4:true}; }
+}
+function berekenMeldingen() {
+  const prefs = laadNotifPrefs();
+  const meldingen = [];
+  VELDEN.forEach(function(v) {
+    const cat = veldCategorie(v.id);
+    const inst = CAT_INST[cat] || CAT_INST['C'];
+    if (prefs.n1 && v.hoogte > inst.max) {
+      meldingen.push({ type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
+    }
+    if (prefs.n2 && v.hoogte < inst.min && v.hoogte > 0) {
+      meldingen.push({ type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
+    }
+    if (prefs.n3 && v.status === 'Gemaaid') {
+      meldingen.push({ type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
+    }
+  });
+  return meldingen;
+}
+function updateMeldingenBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const meldingen = berekenMeldingen();
+  if (meldingen.length > 0) {
+    badge.textContent = meldingen.length;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+function toggleNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown');
+  if (!dd) return;
+  if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  const meldingen = berekenMeldingen();
+  const list = document.getElementById('notif-list');
+  if (meldingen.length === 0) {
+    list.innerHTML = '<div class="notif-empty"><i class="bi bi-check-circle" style="font-size:1.5rem;color:#2e7d32"></i><br>Geen actieve meldingen</div>';
+  } else {
+    list.innerHTML = meldingen.map(function(m) {
+      return '<div class="notif-item"><span class="ni-icon">' + m.icon + '</span><span>' + m.tekst + '</span></div>';
+    }).join('');
+  }
+  dd.classList.add('open');
+}
+function sluitNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+// Sluit dropdown bij klik buiten
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('notif-dropdown');
+  const btn = document.getElementById('notif-btn');
+  if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
+    dd.classList.remove('open');
+  }
+});
 
 // Sessie controleren bij laden — geen flash van inlogscherm
 fetch('/api/me')
