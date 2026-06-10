@@ -632,6 +632,9 @@
       <!-- ══ SENSOR METINGEN ══ -->
       <div id="page-metingen" class="page">
 
+        <!-- STAT CARDS -->
+        <div class="row g-3 mb-3" id="meting-stats"></div>
+
         <!-- ALLE SENSOR DATA TABEL -->
         <div class="dc mb-4" id="alle-sensor-card">
           <div class="dch">
@@ -647,9 +650,9 @@
               </select>
             </div>
           </div>
-          <div class="table-responsive">
+          <div class="table-responsive" style="max-height:320px;overflow-y:auto">
             <table class="table table-hover mb-0">
-              <thead style="background:transparent">
+              <thead style="background:#fff;position:sticky;top:0;z-index:1">
                 <tr>
                   <th class="ps-3" style="border:none">Device</th>
                   <th style="border:none">Grashoogte</th>
@@ -665,9 +668,9 @@
           </div>
         </div>
 
-        <!-- OVERZICHT: stat cards + device kaarten -->
+        <!-- OVERZICHT: device kaarten -->
         <div id="meting-overview">
-          <div class="row g-3 mb-3" id="meting-stats"></div>
+          <div class="row g-3 mb-3" id="meting-stats-hidden" style="display:none"></div>
           <div class="dc">
             <div class="dch">
               <i class="bi bi-broadcast" style="color:var(--g)"></i>
@@ -2132,10 +2135,11 @@ function laadMetingen() {
       const hoogCount = data.filter(m => m.gras_hoogte_cm > 12).length;
       document.getElementById('meting-count').textContent = devices.length + ' device' + (devices.length !== 1 ? 's' : '');
 
-      document.getElementById('meting-stats').innerHTML = `
+      const statsHtml = `
         <div class="col-6 col-md-4"><div class="sc b"><div class="ic"><i class="bi bi-broadcast"></i></div><div><div class="lbl">Totaal metingen</div><div class="val">${totaal}</div><div class="sub">opgeslagen</div></div></div></div>
         <div class="col-6 col-md-4"><div class="sc pu"><div class="ic"><i class="bi bi-cpu"></i></div><div><div class="lbl">Actieve devices</div><div class="val">${devices.length}</div><div class="sub">uniek</div></div></div></div>
         <div class="col-6 col-md-4"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">${hoogCount}</div><div class="sub">&gt;12cm</div></div></div></div>`;
+      document.getElementById('meting-stats').innerHTML = statsHtml;
 
       if (!totaal) {
         document.getElementById('meting-devices-grid').innerHTML = '<div class="text-center py-5 text-muted" style="font-size:.88rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Nog geen metingen ontvangen.</div>';
