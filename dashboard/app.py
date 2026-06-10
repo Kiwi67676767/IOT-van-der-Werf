@@ -148,6 +148,10 @@ with app.app_context():
             ))
         db.session.commit()
         print("Gebruikers aangemaakt in database.")
+        # Seed sensoren voor de initiele machinisten
+        for u in INITIELE_GEBRUIKERS:
+            if u['role'] == 'machinist':
+                _seed_sensor_voor_machinist(u['username'])
     else:
         # Herstel-migratie: reset seed-wachtwoorden die corrupt zijn geraakt
         gereset = 0
@@ -210,6 +214,36 @@ with app.app_context():
     if geseeded:
         db.session.commit()
         print('Demo-metingen aangemaakt voor {} veld(en).'.format(geseeded))
+
+
+# ── SENSOR HELPER ──
+
+def _seed_sensor_voor_machinist(username):
+    """Maak 30 dagen aan demo-metingen voor een nieuw machinist-device."""
+    import random
+    import datetime as dt
+    device_id = 'sensor-' + username
+    # Voorkom dubbele seeding
+    if Meting.query.filter_by(device_id=device_id).first():
+        return
+    now = datetime.utcnow()
+    for dag in range(29, -1, -1):
+        ts = (now - dt.timedelta(days=dag)).replace(
+            hour=random.randint(7, 16),
+            minute=random.randint(0, 59),
+            second=0, microsecond=0
+        )
+        fase = dag % 14
+        hoogte = round(max(1.0, 5.0 + (7.0 * fase / 14) + random.gauss(0, 0.6)), 1)
+        db.session.add(Meting(
+            device_id=device_id,
+            gras_hoogte_cm=hoogte,
+            latitude=53.2194 + random.uniform(-0.02, 0.02),
+            longitude=6.5665 + random.uniform(-0.02, 0.02),
+            timestamp=ts,
+        ))
+    db.session.commit()
+    print(f'Sensor aangemaakt voor machinist: {device_id}')
 
 
 # ── AUTH ROUTES ──
@@ -291,6 +325,11 @@ def create_user():
     )
     db.session.add(user)
     db.session.commit()
+
+    # Koppel automatisch een sensor aan nieuwe machinisten
+    if role == 'machinist':
+        _seed_sensor_voor_machinist(username)
+
     return jsonify({'status': 'ok', 'id': user.id}), 201
 
 
@@ -338,6 +377,12 @@ def delete_user(user_id):
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'Gebruiker niet gevonden'}), 404
+
+    # Verwijder gekoppelde sensor-metingen als het een machinist is
+    if user.role == 'machinist':
+        device_id = 'sensor-' + user.username
+        Meting.query.filter_by(device_id=device_id).delete()
+
     db.session.delete(user)
     db.session.commit()
     return jsonify({'status': 'ok'})
