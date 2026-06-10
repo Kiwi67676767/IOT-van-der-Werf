@@ -204,27 +204,29 @@ with app.app_context():
             if u['role'] == 'machinist':
                 _seed_sensor_voor_machinist(u['username'])
     else:
-        # Herstel-migratie: reset seed-wachtwoorden die corrupt zijn geraakt
+        # Migratie: fix alleen hashes die leeg of aantoonbaar corrupt zijn
+        # (NIET resetten als het wachtwoord gewoon gewijzigd is door de gebruiker)
         gereset = 0
-        for u in INITIELE_GEBRUIKERS:
-            db_user = User.query.filter_by(username=u['username']).first()
-            if db_user and not verify_password(u['password'], db_user.password_hash):
-                db_user.password_hash = hash_password(u['password'])
-                gereset += 1
-                print(f"Wachtwoord gereset voor {u['username']}")
+        for db_user in User.query.all():
+            h = db_user.password_hash or ''
+            hash_ongeldig = not h or (not h.startswith('$2b$') and not h.startswith('$2a$') and not h.startswith('pbkdf2:'))
+            if hash_ongeldig:
+                # Zoek eventueel standaard-wachtwoord op voor seed-gebruikers
+                seed = next((u for u in INITIELE_GEBRUIKERS if u['username'] == db_user.username), None)
+                if seed:
+                    db_user.password_hash = hash_password(seed['password'])
+                    gereset += 1
+                    print(f"Corrupt hash hersteld voor {db_user.username}")
         if gereset:
             db.session.commit()
 
-    # Herstel: zorg dat gebruiker 'admin' altijd de admin-rol heeft + wachtwoord reset
+    # Zorg dat admin altijd de admin-rol heeft (maar raak het wachtwoord NIET aan)
     admin_user = User.query.filter_by(username='admin').first()
-    if admin_user:
-        if admin_user.role != 'admin':
-            admin_user.role = 'admin'
-            admin_user.label = 'Beheerder'
-            print("Rol van 'admin' hersteld naar beheerder.")
-        admin_user.password_hash = hash_password('admin789')
+    if admin_user and admin_user.role != 'admin':
+        admin_user.role = 'admin'
+        admin_user.label = 'Beheerder'
         db.session.commit()
-        print("Wachtwoord van 'admin' teruggezet naar admin789.")
+        print("Rol van 'admin' hersteld naar beheerder.")
 
     # Seed Noorderplantsoen shapefile als er nog geen lagen zijn
     if ShapeLayer.query.count() == 0:
@@ -699,5 +701,5 @@ if __name__ == '__main__':
     print("  http://localhost:5000")
     print("  Ctrl+C om te stoppen")
     print("=" * 40)
-    port = int(os.environ.get('PORT', 8080))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(debug=False, host="0.0.0.0", port=port)
