@@ -571,9 +571,8 @@ function initApp() {
   if(CU.role==='machinist') document.getElementById('sensor-indicator').classList.remove('d-none');
   else document.getElementById('sensor-indicator').classList.add('d-none');
 
-  if(!chartsInit && CU.role==='admin') { initCharts(); chartsInit=true; }
   renderDashFields();
-  showPage(startPage2);
+  requestAnimationFrame(() => showPage(startPage));
   // Laad echte OSM-polygonen op de achtergrond
   laadVeldenVanOSM();
 }
@@ -585,16 +584,6 @@ function updateTime(){
     n.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})+' '+
     n.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
 }
-setInterval(updateTime,1000);
-
-/* ── TIJD ── */
-function updateTime(){
-  const n=new Date();
-  document.getElementById('tb-time').textContent=
-    n.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})+' '+
-    n.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-}
-setInterval(updateTime,1000);
 setInterval(updateTime,1000);
 /* ═══════════════════════════════════════
    ARCGIS MAP — POLYGOON WEERGAVE
