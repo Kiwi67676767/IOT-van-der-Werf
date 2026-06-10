@@ -1,6 +1,8 @@
 from flask import Flask, send_from_directory, request, jsonify, session
 import os
+import io
 import json
+import zipfile
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash
@@ -101,6 +103,26 @@ class Veld(db.Model):
         }
 
 
+class ShapeLayer(db.Model):
+    __tablename__ = 'shape_layers'
+    id        = db.Column(db.Integer, primary_key=True)
+    naam      = db.Column(db.String(200), nullable=False)
+    bestand   = db.Column(db.String(200))
+    geojson   = db.Column(db.Text)        # GeoJSON FeatureCollection als string
+    kleur     = db.Column(db.String(20), default='#2196f3')
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id':        self.id,
+            'naam':      self.naam,
+            'bestand':   self.bestand,
+            'geojson':   json.loads(self.geojson) if self.geojson else None,
+            'kleur':     self.kleur,
+            'timestamp': self.timestamp.isoformat(),
+        }
+
+
 class Meting(db.Model):
     __tablename__ = 'metingen'
     id            = db.Column(db.Integer, primary_key=True)
@@ -174,6 +196,28 @@ with app.app_context():
         admin_user.password_hash = hash_password('admin789')
         db.session.commit()
         print("Wachtwoord van 'admin' teruggezet naar admin789.")
+
+    # Seed Noorderplantsoen shapefile als er nog geen lagen zijn
+    if ShapeLayer.query.count() == 0:
+        npl_geojson = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[6.5605,53.2228],[6.5648,53.2235],[6.5685,53.2232],[6.5705,53.2218],[6.5708,53.22],[6.5695,53.2185],[6.5672,53.2178],[6.5648,53.218],[6.5628,53.2188],[6.5612,53.22],[6.56,53.2214],[6.5605,53.2228]]]
+                },
+                "properties": {"naam": "Noorderplantsoen", "plaats": "Groningen", "type": "stadspark"}
+            }]
+        }
+        db.session.add(ShapeLayer(
+            naam='Noorderplantsoen',
+            bestand='Noorderplantsoen.shp',
+            geojson=json.dumps(npl_geojson),
+            kleur='#2e7d32',
+        ))
+        db.session.commit()
+        print('Noorderplantsoen shapefile geseed.')
 
     # Seed demo-metingen per veld als er nog geen metingen in de buurt zijn
     import random
@@ -484,6 +528,96 @@ def delete_veld(veld_id):
     if not veld:
         return jsonify({'error': 'Niet gevonden'}), 404
     db.session.delete(veld)
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
+# ── SHAPEFILE API ──
+
+def _shapefile_zip_naar_geojson(zip_bytes, kleur_hint=None):
+    """Parse een zip met shapefile → GeoJSON FeatureCollection.
+       Geeft (naam, geojson_dict) terug of gooit een Exception."""
+    import shapefile as shp_mod
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        namen = zf.namelist()
+        shp_file = next((n for n in namen if n.lower().endswith('.shp')), None)
+        shx_file = next((n for n in namen if n.lower().endswith('.shx')), None)
+        dbf_file = next((n for n in namen if n.lower().endswith('.dbf')), None)
+        if not shp_file:
+            raise ValueError('Geen .shp bestand gevonden in de zip.')
+
+        shp_bytes = io.BytesIO(zf.read(shp_file))
+        shx_bytes = io.BytesIO(zf.read(shx_file)) if shx_file else None
+        dbf_bytes = io.BytesIO(zf.read(dbf_file)) if dbf_file else None
+
+        sf = shp_mod.Reader(shp=shp_bytes, shx=shx_bytes, dbf=dbf_bytes)
+
+        features = []
+        for shape, rec in zip(sf.shapes(), sf.records()):
+            parts = list(shape.parts) + [len(shape.points)]
+            rings = [[[p[0], p[1]] for p in shape.points[parts[i]:parts[i+1]]]
+                     for i in range(len(parts) - 1)]
+            features.append({
+                'type': 'Feature',
+                'geometry': {'type': 'Polygon', 'coordinates': rings},
+                'properties': rec.as_dict(),
+            })
+
+        naam = os.path.splitext(os.path.basename(shp_file))[0]
+        geojson = {'type': 'FeatureCollection', 'features': features}
+        return naam, geojson
+
+
+@app.route('/api/shapefiles', methods=['GET'])
+def get_shapefiles():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    lagen = ShapeLayer.query.order_by(ShapeLayer.id).all()
+    return jsonify([l.to_dict() for l in lagen])
+
+
+@app.route('/api/shapefiles', methods=['POST'])
+def upload_shapefile():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    me = db.session.get(User, session['user_id'])
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Alleen beheerders mogen shapefiles uploaden'}), 403
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'Geen bestand meegestuurd'}), 400
+    f = request.files['file']
+    if not f.filename.lower().endswith('.zip'):
+        return jsonify({'error': 'Upload een .zip bestand met de shapefile'}), 400
+
+    kleur = request.form.get('kleur', '#2196f3')
+
+    try:
+        naam, geojson = _shapefile_zip_naar_geojson(f.read(), kleur)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+    laag = ShapeLayer(
+        naam=naam,
+        bestand=f.filename,
+        geojson=json.dumps(geojson),
+        kleur=kleur,
+    )
+    db.session.add(laag)
+    db.session.commit()
+    return jsonify(laag.to_dict()), 201
+
+
+@app.route('/api/shapefiles/<int:laag_id>', methods=['DELETE'])
+def delete_shapefile(laag_id):
+    me = db.session.get(User, session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    laag = db.session.get(ShapeLayer, laag_id)
+    if not laag:
+        return jsonify({'error': 'Niet gevonden'}), 404
+    db.session.delete(laag)
     db.session.commit()
     return jsonify({'status': 'ok'})
 
