@@ -1812,10 +1812,7 @@ function renderTeam() {
     })
     .catch(() => { document.getElementById('team-cards').innerHTML = '<div class="text-danger" style="font-size:.84rem;padding:.5rem">Fout bij laden team.</div>'; });
 
-  document.getElementById('act-log').innerHTML = ACTIVITY.map(a => `<div class="d-flex gap-3 mb-3">
-    <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0"><i class="bi bi-${a.icon}"></i></div>
-    <div><div style="font-size:.82rem;font-weight:600">${a.user}</div><div style="font-size:.81rem;color:#495057">${a.msg}</div><div style="font-size:.74rem;color:#adb5bd">${a.time}</div></div>
-  </div>`).join('');
+  renderActLog();
 }
 
 function filterTeam() {
