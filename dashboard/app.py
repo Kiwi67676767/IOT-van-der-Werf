@@ -143,6 +143,24 @@ class Meting(db.Model):
         }
 
 
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_log'
+    id        = db.Column(db.Integer, primary_key=True)
+    user      = db.Column(db.String(100))
+    type      = db.Column(db.String(50))
+    message   = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id':        self.id,
+            'user':      self.user,
+            'type':      self.type,
+            'message':   self.message,
+            'timestamp': self.timestamp.isoformat(),
+        }
+
+
 # ── SENSOR HELPER ──
 
 def _seed_sensor_voor_machinist(username):
@@ -319,7 +337,10 @@ def login():
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.clear()
-    return jsonify({'status': 'ok'})
+    resp = jsonify({'status': 'ok'})
+    # Verwijder de sessie-cookie expliciet zodat de browser hem niet hergebruikt
+    resp.delete_cookie(app.session_cookie_name)
+    return resp
 
 
 @app.route('/api/config', methods=['GET'])
@@ -333,11 +354,17 @@ def get_config():
 def me():
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({'error': 'Niet ingelogd'}), 401
+        resp = jsonify({'error': 'Niet ingelogd'})
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        return resp, 401
     user = User.query.get(user_id)
     if not user:
-        return jsonify({'error': 'Niet ingelogd'}), 401
-    return jsonify(user.to_dict())
+        resp = jsonify({'error': 'Niet ingelogd'})
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        return resp, 401
+    resp = jsonify(user.to_dict())
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
 
 
 # ── GEBRUIKERS BEHEER ──

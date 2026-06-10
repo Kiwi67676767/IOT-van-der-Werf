@@ -3069,7 +3069,7 @@ function _hexToRgba(hex, alpha) {
 }
 
 // Sessie controleren bij laden — geen flash van inlogscherm
-fetch('/api/me')
+fetch('/api/me', { cache: 'no-store', credentials: 'same-origin' })
   .then(r => r.ok ? r.json() : null)
   .then(user => {
     document.getElementById('loading-screen').style.display = 'none';
