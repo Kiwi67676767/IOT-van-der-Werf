@@ -984,14 +984,7 @@ function toonToast(msg, kleur) {
   t.textContent = msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 2500);
 }
 
-const ACTIVITY = [
-  { time:'09:42', user:'Machinist 2', msg:'Start maaien Veld 3 – Gemeentepark',        icon:'scissors',               color:'var(--g)' },
-  { time:'09:15', user:'Machinist 1', msg:'Veld 15 klaar gemaaid',                     icon:'check2-circle',          color:'#4caf50' },
-  { time:'08:50', user:'Systeem',     msg:'Alarm: Veld 9 grashoogte 158mm (max 120mm)',icon:'exclamation-triangle-fill',color:'#f44336' },
-  { time:'08:30', user:'Machinist 1', msg:'Ingelogd op systeem',                       icon:'person-check',           color:'#2196f3' },
-  { time:'08:15', user:'Machinist 1', msg:'Start maaien Veld 4 – Berm A9',             icon:'scissors',               color:'var(--g)' },
-  { time:'07:55', user:'Systeem',     msg:'Dagelijks rapport gegenereerd',              icon:'file-earmark-text',      color:'#9c27b0' },
-];
+// ACTIVITY wordt nu geladen via /api/activiteiten (zie renderActLog)
 
 const TEAM = [
   { name:'Machinist 1', initials:'M1', status:'Actief',  veld:'Veld 4 – Berm A9',        since:'08:15' },
@@ -1805,10 +1798,70 @@ function renderTeam(){
     })
     .catch(() => { el.innerHTML = '<div class="text-danger" style="font-size:.84rem;padding:.5rem">Fout bij laden team.</div>'; });
 
-  document.getElementById('act-log').innerHTML=ACTIVITY.map(a=>`<div class="d-flex gap-3 mb-3">
-    <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0"><i class="bi bi-${a.icon}"></i></div>
-    <div><div style="font-size:.82rem;font-weight:600">${a.user}</div><div style="font-size:.81rem;color:#495057">${a.msg}</div><div style="font-size:.74rem;color:#adb5bd">${a.time}</div></div>
-  </div>`).join('');
+  renderActLog();
+}
+
+function renderActLog() {
+  const el = document.getElementById('act-log');
+  el.innerHTML = '<div class="text-center py-2 text-muted" style="font-size:.82rem"><i class="bi bi-arrow-clockwise spin me-1"></i>Laden…</div>';
+
+  fetch('/api/activiteiten?limit=60', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : [])
+    .then(items => {
+      if (!items.length) {
+        el.innerHTML = '<div class="text-muted" style="font-size:.82rem;padding:.4rem">Nog geen activiteiten.</div>';
+        return;
+      }
+
+      // Icoon + kleur per type
+      const META = {
+        login:  { icon: 'person-check',            color: '#2196f3' },
+        meting: { icon: 'broadcast',               color: 'var(--g)' },
+        alarm:  { icon: 'exclamation-triangle-fill', color: '#f44336' },
+      };
+
+      // Datumgroep-label
+      function dagLabel(isoStr) {
+        const d = new Date(isoStr + (isoStr.endsWith('Z') ? '' : 'Z'));
+        const nu = new Date();
+        const diffDagen = Math.floor((Date.UTC(nu.getFullYear(), nu.getMonth(), nu.getDate()) -
+                                      Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+        if (diffDagen === 0) return 'Vandaag';
+        if (diffDagen === 1) return 'Gisteren';
+        return `${diffDagen} dagen geleden`;
+      }
+
+      // Tijdstip weergave (HH:MM)
+      function tijdStr(isoStr) {
+        const d = new Date(isoStr + (isoStr.endsWith('Z') ? '' : 'Z'));
+        return d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // Groepeer op dagLabel
+      const groepen = {};
+      items.forEach(a => {
+        const lbl = dagLabel(a.timestamp);
+        if (!groepen[lbl]) groepen[lbl] = [];
+        groepen[lbl].push(a);
+      });
+
+      let html = '';
+      Object.entries(groepen).forEach(([dag, entries]) => {
+        html += `<div style="font-size:.72rem;font-weight:700;color:#adb5bd;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;margin-top:.6rem">${dag}</div>`;
+        entries.forEach(a => {
+          const m = META[a.type] || { icon: 'circle-fill', color: '#6c757d' };
+          html += `<div class="d-flex gap-3 mb-3">
+            <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${m.color};flex-shrink:0"><i class="bi bi-${m.icon}"></i></div>
+            <div><div style="font-size:.82rem;font-weight:600">${a.user}</div><div style="font-size:.81rem;color:#495057">${a.message}</div><div style="font-size:.74rem;color:#adb5bd">${tijdStr(a.timestamp)}</div></div>
+          </div>`;
+        });
+      });
+
+      el.innerHTML = html;
+    })
+    .catch(() => {
+      el.innerHTML = '<div class="text-danger" style="font-size:.82rem;padding:.4rem">Fout bij laden activiteiten.</div>';
+    });
 }
 
 /* ═══════════════════════════════════════

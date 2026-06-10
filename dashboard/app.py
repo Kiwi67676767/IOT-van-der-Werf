@@ -101,6 +101,24 @@ class Veld(db.Model):
         }
 
 
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_log'
+    id        = db.Column(db.Integer, primary_key=True)
+    user      = db.Column(db.String(100))   # naam of 'Systeem'
+    type      = db.Column(db.String(50))    # 'login' / 'meting' / 'alarm'
+    message   = db.Column(db.String(255))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id':        self.id,
+            'user':      self.user,
+            'type':      self.type,
+            'message':   self.message,
+            'timestamp': self.timestamp.isoformat(),
+        }
+
+
 class Meting(db.Model):
     __tablename__ = 'metingen'
     id            = db.Column(db.Integer, primary_key=True)
@@ -260,6 +278,13 @@ def login():
             user.password_hash = hash_password(password)
             db.session.commit()
         session['user_id'] = user.id
+        # Activiteitenlog
+        db.session.add(ActivityLog(
+            user=user.name or user.username,
+            type='login',
+            message=f'Ingelogd op systeem',
+        ))
+        db.session.commit()
         return jsonify(user.to_dict()), 200
     return jsonify({'error': 'Verkeerde gebruikersnaam of wachtwoord'}), 401
 
@@ -495,16 +520,34 @@ def ontvang_meting():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Geen JSON data"}), 400
+    hoogte = data.get('gras_hoogte_cm')
+    device = data.get('device_id') or 'onbekend'
     meting = Meting(
-        device_id     = data.get('device_id'),
-        gras_hoogte_cm = data.get('gras_hoogte_cm'),
-        latitude      = data.get('latitude'),
-        longitude     = data.get('longitude')
+        device_id      = device,
+        gras_hoogte_cm = hoogte,
+        latitude       = data.get('latitude'),
+        longitude      = data.get('longitude')
     )
     db.session.add(meting)
+    # Activiteitenlog
+    hoogte_str = f'{hoogte} cm' if hoogte is not None else 'onbekend'
+    db.session.add(ActivityLog(
+        user='Systeem',
+        type='meting',
+        message=f'Meting ontvangen van {device}: {hoogte_str}',
+    ))
     db.session.commit()
     print(f"Meting opgeslagen: {data}")
     return jsonify({"status": "ok"}), 200
+
+
+@app.route('/api/activiteiten', methods=['GET'])
+def get_activiteiten():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    limit = min(int(request.args.get('limit', 50)), 200)
+    items = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(limit).all()
+    return jsonify([a.to_dict() for a in items])
 
 
 @app.route('/api/metingen', methods=['GET'])
