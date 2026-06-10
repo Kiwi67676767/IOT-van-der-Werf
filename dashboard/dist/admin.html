@@ -1042,7 +1042,7 @@ function zetGebruikerIn(user) {
   document.getElementById('sb-name').textContent=CU.name;
   document.getElementById('sb-role').textContent=CU.label;
   document.getElementById('sb-av').textContent=CU.initials;
-  document.getElementById('app').style.display='flex';
+  document.getElementById('app').style.display='block';
   buildNav(CU.role);
   fetch('/api/config', {credentials:'same-origin'})
     .then(function(r){ return r.ok ? r.json() : {}; })
