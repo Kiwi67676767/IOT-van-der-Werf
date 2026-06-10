@@ -1460,27 +1460,26 @@ function initMap(containerId, showAll) {
     mapViews[containerId] = { view, layer: null };
 
     const layer = new GraphicsLayer();
-    const veldenToShow = showAll ? VELDEN : getRoute();
 
-    veldenToShow.forEach((v, idx) => {
-      const geom = maakPolygon(v.lat, v.lng, v.rings || null);
-      layer.add(new Graphic({
-        geometry: geom,
-        symbol: statusSymbol(v.status),
-        attributes: { ...v, routeNr: showAll ? '' : (idx + 1) },
-        popupTemplate: {
-          title: `{naam} — {loc}`,
-          content: `<table class="esri-widget__table">
-            <tr><th>Status</th><td>{status}</td></tr>
-            <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
-            <tr><th>Prioriteit</th><td>{prio}</td></tr>
-            <tr><th>Machinist</th><td>{machinist}</td></tr>
-          </table>`,
-        },
-      }));
-
-      // Routenummer label (alleen machinistenkaart)
-      if (!showAll) {
+    // Alleen op de routekaart (machinist) velden tekenen, niet op de live kaart
+    if (!showAll) {
+      const veldenToShow = getRoute();
+      veldenToShow.forEach((v, idx) => {
+        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+        layer.add(new Graphic({
+          geometry: geom,
+          symbol: statusSymbol(v.status),
+          attributes: { ...v, routeNr: idx + 1 },
+          popupTemplate: {
+            title: `{naam} — {loc}`,
+            content: `<table class="esri-widget__table">
+              <tr><th>Status</th><td>{status}</td></tr>
+              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+              <tr><th>Prioriteit</th><td>{prio}</td></tr>
+              <tr><th>Machinist</th><td>{machinist}</td></tr>
+            </table>`,
+          },
+        }));
         layer.add(new Graphic({
           geometry: { type:'point', longitude: v.lng, latitude: v.lat },
           symbol: {
@@ -1488,8 +1487,8 @@ function initMap(containerId, showAll) {
             text: String(idx + 1), font:{ size:10, weight:'bold' },
           },
         }));
-      }
-    });
+      });
+    }
 
     map.add(layer);
     mapViews[containerId].layer = layer;
