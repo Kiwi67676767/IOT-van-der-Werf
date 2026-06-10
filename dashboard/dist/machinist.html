@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Van der Werf | Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.css" crossorigin="anonymous" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --g:    #2e7d32;
+      --gd:   #1b5e20;
+      --gm:   #388e3c;
+      --gl:   #4caf50;
+      --gp:   #e8f5e9;
+      --acc:  #66bb6a;
+      --sw:   260px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f4f6f4; margin: 0; overflow-x: hidden; }
+
+    /* ── LOGIN ── */
+    #loading-screen {
+      position: fixed; inset: 0; z-index: 10000;
+      background: linear-gradient(135deg, var(--gd) 0%, var(--g) 55%, var(--gl) 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #login-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, var(--gd) 0%, var(--g) 55%, var(--gl) 100%);
+      display: none; align-items: center; justify-content: center;
+    }
+    .lcard {
+      background: #fff; border-radius: 18px; padding: 2.5rem 2.2rem;
+      width: 100%; max-width: 410px; box-shadow: 0 24px 64px rgba(0,0,0,.28);
+    }
+    .lcard-logo {
+      width: 68px; height: 68px; background: var(--g); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem; color: #fff; font-size: 2rem;
+    }
+    .lcard h2 { color: var(--gd); text-align: center; font-weight: 700; margin-bottom: .2rem; }
+    .lcard .sub { color: #6c757d; text-align: center; font-size: .84rem; margin-bottom: 1.6rem; }
+    .lcard .form-control:focus { border-color: var(--g); box-shadow: 0 0 0 .2rem rgba(46,125,50,.2); }
+    .btn-lgi {
+      background: var(--g); color: #fff; border: none; width: 100%;
+      padding: .75rem; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-lgi:hover { background: var(--gd); }
+    #login-error { color: #dc3545; font-size: .84rem; text-align: center; margin-top: .6rem; display: none; }
+    .lcard-hint { color: #adb5bd; font-size: .76rem; text-align: center; margin-top: 1rem; line-height: 1.7; }
+
+    /* ── NOTIFICATIES BELL ── */
+    .notif-btn { position:relative; background:none; border:none; cursor:pointer; padding:4px 8px; color:#6c757d; }
+    .notif-btn:hover { color:var(--g); }
+    .notif-badge { position:absolute; top:0; right:2px; background:#dc3545; color:#fff; border-radius:50%;
+      font-size:.6rem; font-weight:700; min-width:16px; height:16px; display:flex; align-items:center;
+      justify-content:center; line-height:1; padding:0 3px; }
+    .notif-dropdown { position:fixed; top:56px; right:1rem; width:320px; background:#fff; border-radius:14px;
+      box-shadow:0 8px 32px rgba(0,0,0,.18); z-index:9999; display:none; overflow:hidden; }
+    .notif-dropdown.open { display:block; }
+    .notif-header { background:var(--g); color:#fff; padding:.7rem 1rem; font-weight:600; font-size:.88rem;
+      display:flex; align-items:center; justify-content:space-between; }
+    .notif-list { max-height:320px; overflow-y:auto; }
+    .notif-item { padding:.7rem 1rem; border-bottom:1px solid #f0f0f0; font-size:.83rem; display:flex; gap:.6rem; align-items:flex-start; }
+    .notif-item:last-child { border-bottom:none; }
+    .notif-item .ni-icon { font-size:1.1rem; flex-shrink:0; margin-top:1px; }
+    .notif-empty { padding:1.5rem 1rem; text-align:center; color:#adb5bd; font-size:.84rem; }
+
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sw);
+      background: linear-gradient(180deg, var(--gd) 0%, var(--g) 100%);
+      z-index: 100; display: flex; flex-direction: column;
+      box-shadow: 4px 0 20px rgba(0,0,0,.18); transition: transform .3s;
+    }
+    .sb-brand {
+      padding: 1.3rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.1);
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .sb-brand-icon {
+      width: 40px; height: 40px; background: rgba(255,255,255,.15); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; flex-shrink: 0;
+    }
+    .sb-brand-text { color: #fff; font-weight: 700; font-size: .95rem; line-height: 1.2; }
+    .sb-brand-text small { font-weight: 300; font-size: .73rem; opacity: .8; display: block; }
+    .sb-nav { flex: 1; overflow-y: auto; padding: .8rem 0; }
+    .sb-nav::-webkit-scrollbar { width: 3px; }
+    .sb-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 2px; }
+    .sb-sec { color: rgba(255,255,255,.45); font-size: .67rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .08em; padding: .6rem 1.2rem .2rem; margin-top: .4rem; }
+    .sb-link {
+      display: flex; align-items: center; gap: .75rem; padding: .62rem 1.2rem;
+      color: rgba(255,255,255,.8); text-decoration: none; font-size: .875rem; font-weight: 500;
+      border: none; background: transparent; width: 100%; text-align: left; cursor: pointer;
+      transition: background .15s, color .15s; border-left: 3px solid transparent;
+    }
+    .sb-link i { font-size: .95rem; width: 20px; flex-shrink: 0; }
+    .sb-link:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .sb-link.active { background: rgba(255,255,255,.18); color: #fff; border-left-color: var(--acc); padding-left: calc(1.2rem - 3px); }
+    .sb-badge { margin-left: auto; background: rgba(255,255,255,.18); color: #fff; font-size: .68rem; padding: .12rem .5rem; border-radius: 20px; font-weight: 600; }
+    .sb-user {
+      padding: .9rem 1.2rem; border-top: 1px solid rgba(255,255,255,.1);
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .sb-avatar {
+      width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: .82rem; font-weight: 700; flex-shrink: 0;
+    }
+    .sb-uinfo { flex: 1; min-width: 0; }
+    .sb-uinfo .n { color: #fff; font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-uinfo .r { color: rgba(255,255,255,.55); font-size: .7rem; }
+    .btn-out { color: rgba(255,255,255,.7); border: none; background: transparent; cursor: pointer; font-size: .95rem; padding: .2rem; }
+    .btn-out:hover { color: #fff; }
+
+    /* ── LAYOUT ── */
+    #app { display: none; min-height: 100vh; }
+    #main { margin-left: var(--sw); min-height: 100vh; display: flex; flex-direction: column; }
+    #topbar {
+      background: #fff; border-bottom: 1px solid #e9ecef; padding: .7rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    #topbar h4 { margin: 0; font-weight: 700; color: var(--gd); flex: 1; font-size: 1.1rem; }
+    .tb-bc { font-size: .78rem; color: #adb5bd; }
+    .tb-bc span { color: var(--g); font-weight: 500; }
+    .ca { padding: 1.4rem; flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── CARDS ── */
+    .dc { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 1.2rem; }
+    .dch {
+      padding: .9rem 1.2rem .7rem; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .dch h6 { margin: 0; font-weight: 700; color: #1a1a2e; font-size: .88rem; flex: 1; }
+    .dcb { padding: 1.2rem; }
+
+    /* ── STAT CARDS ── */
+    .sc {
+      background: #fff; border-radius: 12px; padding: 1.1rem 1.3rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.07); border-left: 4px solid var(--g);
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .sc .ic { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+    .sc .lbl { font-size: .72rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .sc .val { font-size: 1.9rem; font-weight: 700; color: var(--gd); line-height: 1; margin: .2rem 0; }
+    .sc .sub { font-size: .75rem; color: #adb5bd; }
+    .sc.g  { border-left-color: var(--g);   } .sc.g  .ic { background: var(--gp); color: var(--g); }
+    .sc.r  { border-left-color: #f44336; }    .sc.r  .ic { background: #ffebee; color: #f44336; }
+    .sc.o  { border-left-color: #ff9800; }    .sc.o  .ic { background: #fff3e0; color: #ff9800; }
+    .sc.b  { border-left-color: #2196f3; }    .sc.b  .ic { background: #e3f2fd; color: #2196f3; }
+    .sc.pu { border-left-color: #9c27b0; }    .sc.pu .ic { background: #f3e5f5; color: #9c27b0; }
+
+    /* ── BADGES ── */
+    .bs { font-size: .71rem; font-weight: 600; padding: .28em .7em; border-radius: 20px; white-space: nowrap; }
+    .bsh  { background: #ffebee; color: #c62828; }
+    .bsl  { background: #fff3e0; color: #e65100; }
+    .bsok { background: #e8f5e9; color: #2e7d32; }
+    .bsb  { background: #e3f2fd; color: #1565c0; }
+    .bsgm { background: #f3e5f5; color: #6a1b9a; }
+
+    /* ── PROGRESS ── */
+    .pg { margin-bottom: .9rem; }
+    .pg .pl { display: flex; justify-content: space-between; font-size: .81rem; margin-bottom: .3rem; color: #495057; font-weight: 500; }
+    .progress { height: 7px; border-radius: 4px; background: #f0f0f0; }
+
+    /* ── MAP ── */
+    #arcgis-map { height: 420px; border-radius: 0 0 12px 12px; overflow: hidden; }
+
+    /* ── ROUTE CARD ── */
+    .route-item {
+      display: flex; align-items: flex-start; gap: 1rem; padding: .9rem 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .route-item:last-child { border-bottom: none; }
+    .route-num {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--g); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0;
+    }
+    .route-num.urgent { background: #f44336; }
+    .route-num.medium { background: #ff9800; }
+    .route-num.done   { background: #9e9e9e; }
+    .route-info { flex: 1; }
+    .route-name { font-weight: 600; font-size: .88rem; color: #1a1a2e; }
+    .route-sub  { font-size: .78rem; color: #6c757d; margin-top: .15rem; }
+    .route-hoogte { font-size: 1.1rem; font-weight: 700; }
+
+    /* ── SENSOR BUTTON ── */
+    .btn-meting {
+      background: linear-gradient(135deg, var(--g), var(--gl));
+      color: #fff; border: none; border-radius: 12px;
+      padding: 1rem 2rem; font-size: 1.05rem; font-weight: 700;
+      cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: .75rem;
+      box-shadow: 0 4px 14px rgba(46,125,50,.35); transition: transform .15s, box-shadow .15s;
+    }
+    .btn-meting:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(46,125,50,.45); }
+    .btn-meting.active-meting { background: linear-gradient(135deg, #f44336, #ef5350); box-shadow: 0 4px 14px rgba(244,67,54,.35); }
+    .pulse { animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── SENSOR STATUS ── */
+    .sensor-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .sensor-dot.on  { background: var(--gl); animation: pulse 1s infinite; }
+    .sensor-dot.off { background: #ccc; }
+
+    /* ── CONTRACT ── */
+    .contract-meter {
+      border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .8rem;
+      border: 2px solid #e9ecef;
+    }
+    .contract-meter.compliant   { border-color: var(--gl); background: #f9fef9; }
+    .contract-meter.warning     { border-color: #ff9800;   background: #fffdf5; }
+    .contract-meter.violation   { border-color: #f44336;   background: #fff9f9; }
+
+    /* ── FIELD LIST ── */
+    .fi { display: flex; align-items: center; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid #f5f5f5; }
+    .fi:last-child { border-bottom: none; }
+    .fi-ic { width: 36px; height: 36px; border-radius: 9px; background: var(--gp); color: var(--g); display: flex; align-items: center; justify-content: center; font-size: .95rem; flex-shrink: 0; }
+    .fi-info { flex: 1; min-width: 0; }
+    .fi-name { font-weight: 600; font-size: .86rem; color: #1a1a2e; }
+    .fi-sub  { font-size: .74rem; color: #adb5bd; }
+
+    /* ── LEGEND ── */
+    .ld { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+    /* ── TABLE ── */
+    th { font-size: .78rem !important; font-weight: 600 !important; }
+    td { font-size: .84rem; vertical-align: middle !important; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #main { margin-left: 0; }
+      .mob-show { display: flex !important; }
+    }
+    .mob-show { display: none; }
+
+    footer { padding: .7rem 1.5rem; border-top: 1px solid #e9ecef; background: #fff; font-size: .76rem; color: #adb5bd; }
+
+    /* ── IMPORT ── */
+    .import-status-ok      { background:#e8f5e9; border:1px solid #a5d6a7; color:#1b5e20; }
+    .import-status-err     { background:#ffebee; border:1px solid #ef9a9a; color:#b71c1c; }
+    .import-status-loading { background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; }
+    .spin { animation: spin .8s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .import-row-exists td { background:#f9fef9 !important; }
+
+    /* ── SETTINGS FIX ── */
+    .settings-group { background: #f8f9fa; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .settings-group label { font-size: .83rem; font-weight: 600; color: #495057; display: block; margin-bottom: .4rem; }
+    .settings-group input.form-control { max-width: 160px; }
+    .settings-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .settings-unit { font-size: .82rem; color: #6c757d; }
+  </style>
+</head>
+<body>
+
+
+<!-- ═══════════ LOADING ═══════════ -->
+<div id="loading-screen">
+  <div style="text-align:center;color:#fff">
+    <div class="spinner-border mb-3" style="width:2.2rem;height:2.2rem;border-width:3px" role="status"></div>
+    <div style="font-weight:600;font-size:.95rem;opacity:.9">Laden…</div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <!-- ═══════════ APP ═══════════ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-brand-icon"><img src="https://groenwerf.nl/wp-content/uploads/2023/10/cropped-favicon-32x32.png" alt="GroenWerf" style="width:26px;height:26px;object-fit:contain;border-radius:3px"></div>
+      <div class="sb-brand-text">Van der Werf <small>Groenvoorzieningen</small></div>
+    </div>
+    <nav class="sb-nav" id="sb-nav-content"></nav>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-av">??</div>
+      <div class="sb-uinfo">
+        <div class="n" id="sb-name">—</div>
+        <div class="r" id="sb-role">—</div>
+      </div>
+      <button class="btn-out" title="Uitloggen" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
+  </aside>
+
+
+  <!-- MAIN -->
+    <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <button class="btn mob-show p-1" onclick="toggleSidebar()"><i class="bi bi-list fs-4" style="color:var(--g)"></i></button>
+      <div>
+        <h4 id="pg-title">Dashboard</h4>
+        <div class="tb-bc">Home &rsaquo; <span id="pg-crumb">Overzicht</span></div>
+      </div>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span id="sensor-indicator" class="d-none">
+          <span class="sensor-dot off" id="s-dot"></span>
+          <span id="s-label" style="font-size:.78rem;color:#6c757d;margin-left:4px">Sensor inactief</span>
+        </span>
+        <button class="notif-btn" id="notif-btn" onclick="toggleNotifDropdown()" title="Meldingen">
+          <i class="bi bi-bell-fill" style="font-size:1.1rem"></i>
+          <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+        </button>
+        <div class="notif-dropdown" id="notif-dropdown">
+          <div class="notif-header">
+            <span><i class="bi bi-bell-fill me-2"></i>Actieve meldingen</span>
+            <button onclick="sluitNotifDropdown()" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;padding:0"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="notif-list" id="notif-list"></div>
+        </div>
+        <span class="badge rounded-pill" style="background:var(--gp);color:var(--g);font-size:.76rem">
+          <i class="bi bi-circle-fill me-1" style="font-size:.4rem"></i>Live
+        </span>
+        <span class="text-muted" style="font-size:.78rem" id="tb-time"></span>
+      </div>
+    </div>
+
+    <div class="ca">
+
+    <div class="ca">
+
+<!-- ══ MACHINIST ROUTE ══ -->
+      <div id="page-route" class="page">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <div class="dc h-100">
+              <div class="dch"><i class="bi bi-cpu" style="color:var(--g)"></i><h6>Sensor & Meting</h6></div>
+              <div class="dcb text-center">
+                <div class="mb-4 p-3" style="background:linear-gradient(135deg,#f0faf0,#e8f5e9);border-radius:14px;border:1px solid #c8e6c9">
+                  <div class="sensor-dot off d-inline-block mb-2" id="big-s-dot" style="width:14px;height:14px;box-shadow:0 0 0 4px rgba(76,175,80,.15)"></div>
+                  <div id="big-s-label" style="font-size:.88rem;color:#374151;font-weight:600">Sensor inactief</div>
+                  <div id="big-s-since" style="font-size:.75rem;color:#9ca3af;margin-top:.2rem"></div>
+                </div>
+                <button class="btn-meting" id="btn-meting" onclick="toggleMeting()">
+                  <i class="bi bi-play-fill" id="meting-icon"></i>
+                  <span id="meting-txt">Meting starten</span>
+                </button>
+                <div class="mt-3 p-3" style="background:#f9fafb;border:1px solid #f3f4f6;border-radius:12px;font-size:.8rem;color:#6b7280;text-align:left">
+                  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.3rem">Laatste meting</div>
+                  <span id="last-meting" style="font-weight:500;color:#374151">Nog geen meting uitgevoerd</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="dc h-100">
+              <div class="dch">
+                <i class="bi bi-signpost-2-fill" style="color:var(--g)"></i>
+                <h6>Optimale maairoute</h6>
+                <div class="ms-auto d-flex gap-2">
+                  <button class="btn btn-sm" style="background:linear-gradient(135deg,var(--gd),var(--gl));color:#fff;font-size:.78rem;border-radius:9px;font-weight:600;padding:.4rem .9rem;box-shadow:0 3px 10px rgba(46,125,50,.3)" onclick="openGoogleMaps()">
+                    <i class="bi bi-map me-1"></i>Google Maps
+                  </button>
+                  <button class="btn btn-sm" style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:9px;font-size:.78rem" onclick="herbereken()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="dcb pt-0" id="route-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="dc">
+          <div class="dch"><i class="bi bi-map-fill" style="color:var(--g)"></i><h6>Route op kaart</h6></div>
+          <div id="arcgis-map-route" style="height:340px;border-radius:0 0 12px 12px;overflow:hidden"></div>
+        </div>
+      </div>
+<!-- ══ KAART ══ -->
+      <div id="page-kaart" class="page">
+        <div class="dc">
+          <div class="dch">
+            <i class="bi bi-map-fill" style="color:var(--g)"></i>
+            <h6>Live Kaart — Veldenoverzicht</h6>
+            <div class="ms-auto d-flex gap-2 flex-wrap" style="font-size:.73rem">
+              <span style="display:flex;align-items:center;gap:.3rem;background:#fff5f5;padding:.2rem .6rem;border-radius:50px;border:1px solid #ffcdd2;color:#c62828;font-weight:600"><span class="ld" style="background:#f44336;width:8px;height:8px"></span>Te hoog</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#fff8f0;padding:.2rem .6rem;border-radius:50px;border:1px solid #ffe0b2;color:#bf360c;font-weight:600"><span class="ld" style="background:#ff9800;width:8px;height:8px"></span>Te laag</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#f0faf0;padding:.2rem .6rem;border-radius:50px;border:1px solid #c8e6c9;color:#1b5e20;font-weight:600"><span class="ld" style="background:#4caf50;width:8px;height:8px"></span>OK</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#f0f7ff;padding:.2rem .6rem;border-radius:50px;border:1px solid #bbdefb;color:#0d47a1;font-weight:600"><span class="ld" style="background:#2196f3;width:8px;height:8px"></span>In uitvoering</span>
+              <span style="display:flex;align-items:center;gap:.3rem;background:#f8f0ff;padding:.2rem .6rem;border-radius:50px;border:1px solid #e1bee7;color:#4a148c;font-weight:600"><span class="ld" style="background:#9c27b0;width:8px;height:8px"></span>Gemaaid</span>
+            </div>
+          </div>
+          <div id="osm-laad-status" style="font-size:.75rem;color:#6c757d;padding:.3rem .9rem;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;align-items:center;gap:.4rem">
+            <span class="spinner-border spinner-border-sm" style="width:.75rem;height:.75rem;border-width:2px"></span>
+            <span>Grasveldgrenzen ophalen uit OpenStreetMap…</span>
+          </div>
+          <div id="arcgis-map"></div>
+        </div>
+      </div>
+<!-- ══ VELDEN ══ -->
+      <div id="page-velden" class="page">
+        <div class="dc">
+          <div class="dch">
+            <i class="bi bi-list-check" style="color:var(--g)"></i>
+            <h6>Veldenlijst</h6>
+            <div class="ms-auto d-flex gap-2">
+              <div class="input-group input-group-sm" style="width:170px">
+                <span class="input-group-text" style="background:#f9fafb;border-color:#e5e7eb;border-radius:9px 0 0 9px"><i class="bi bi-search" style="color:#9ca3af;font-size:.8rem"></i></span>
+                <input class="form-control" placeholder="Zoeken…" id="v-search" oninput="filterVelden()" style="border-color:#e5e7eb;border-radius:0 9px 9px 0;font-size:.82rem" />
+              </div>
+              <select class="form-select form-select-sm" id="v-filter" onchange="filterVelden()" style="width:145px;border-radius:9px;border-color:#e5e7eb;font-size:.82rem">
+                <option value="">Alle statussen</option>
+                <option>Hoog</option><option>OK</option><option>Te laag</option>
+                <option>In uitvoering</option><option>Gemaaid</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:transparent">
+                <tr>
+                  <th class="ps-3" style="border:none;padding:.8rem 1.2rem">Veld</th>
+                  <th style="border:none">Locatie</th>
+                  <th style="border:none">Coördinaten</th>
+                  <th style="border:none">Hoogte</th>
+                  <th style="border:none">Status</th>
+                  <th id="th-categorie" style="border:none">Categorie</th>
+                  <th style="border:none">Prioriteit</th>
+                  <th id="th-machinist"  style="border:none">Machinist</th>
+                  <th id="th-stakeholder" style="border:none;display:none">Stakeholder</th>
+                </tr>
+              </thead>
+              <tbody id="v-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+        </div><!-- /ca -->
+    <footer>&copy; 2026 Van der Werf Groenvoorzieningen &mdash; IoT Dashboard</footer>
+  </div>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js" crossorigin="anonymous"></script>
+<script src="https://js.arcgis.com/4.29/"></script>
+
+<script>
+/* ═══════════════════════════════════════
+   DATA
+═══════════════════════════════════════ */
+let ARCGIS_KEY = ''; // geladen via /api/config na login
+
+
+// Grasvelden — dynamisch geladen vanuit OpenStreetMap (Overpass API)
+let VELDEN = [];
+
+/* ── CONTRACTCATEGORIE STATE ── */
+const CAT_DEFAULTS = {
+  A: { naam:'A — Intensief (Sportgras)', max:  60, target:  40, min: 10 },
+  B: { naam:'B — Regulier (Parkgras)',   max: 100, target:  70, min: 25 },
+  C: { naam:'C — Standaard (Grasveld)', max: 140, target:  90, min: 35 },
+  D: { naam:'D — Extensief (Weide)',    max: 200, target: 140, min: 60 },
+};
+let CAT_INST = (function(){ try { return JSON.parse(localStorage.getItem('cat_inst')) || JSON.parse(JSON.stringify(CAT_DEFAULTS)); } catch(e) { return JSON.parse(JSON.stringify(CAT_DEFAULTS)); } })();
+let VELD_CAT = (function(){ try { return JSON.parse(localStorage.getItem('veld_cat')) || {}; } catch(e) { return {}; } })();
+
+function veldCategorie(veldId) { return VELD_CAT[veldId] || 'C'; }
+function veldInNaleving(veld) {
+  var cat = CAT_INST[veldCategorie(veld.id)];
+  return cat ? (veld.hoogte >= cat.min && veld.hoogte <= cat.max) : true;
+}
+function berekenNaleving() {
+  if (!VELDEN.length) return null;
+  return Math.round(VELDEN.filter(veldInNaleving).length / VELDEN.length * 100);
+}
+function updateNalevingStat() {
+  var el = document.getElementById('dash-naleving');
+  if (!el) return;
+  var pct = berekenNaleving();
+  el.innerHTML = pct !== null ? pct + '<span style="font-size:.95rem">%</span>' : '—';
+  var kaart = el.closest('.sc');
+  if (kaart) kaart.className = 'sc ' + (pct === null ? 'b' : pct >= 80 ? 'g' : pct >= 60 ? 'o' : 'r');
+}
+function slaVeldCatOp(veldId, cat) {
+  VELD_CAT[veldId] = cat;
+  localStorage.setItem('veld_cat', JSON.stringify(VELD_CAT));
+  slaVeldOpInDB(veldId, { categorie: cat });
+  updateNalevingStat();
+}
+function toonToast(msg, kleur) {
+  kleur = kleur || 'var(--g)';
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:' + kleur + ';color:#fff;padding:.7rem 1.2rem;border-radius:10px;font-size:.84rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+  t.textContent = msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 2500);
+}
+
+// ACTIVITY wordt nu geladen via /api/activiteiten (zie renderActLog)
+
+const TEAM = [
+  { name:'Machinist 1', initials:'M1', status:'Actief',  veld:'Veld 4 – Berm A9',        since:'08:15' },
+  { name:'Machinist 2', initials:'M2', status:'Actief',  veld:'Veld 3 – Gemeentepark',   since:'09:00' },
+  { name:'Beheerder',   initials:'AD', status:'Kantoor', veld:'—',                       since:'07:30' },
+];
+
+/* ═══════════════════════════════════════
+   MENUS PER ROL
+═══════════════════════════════════════ */
+const NAV = {
+  admin: [
+    { sec:'Hoofdmenu' },
+    { page:'dashboard', icon:'grid-1x2-fill', label:'Dashboard' },
+    { page:'kaart',     icon:'map-fill',      label:'Kaart',    badge:'Live' },
+    { page:'velden',    icon:'list-check',    label:'Velden',   badge:'…' },
+    { sec:'Beheer' },
+    { page:'import',      icon:'cloud-arrow-down-fill', label:'Velden importeren', badge:'ArcGIS' },
+    { page:'shapefiles',  icon:'layers-fill',           label:'Shapefiles',        badge:'GIS' },
+    { page:'metingen',      icon:'broadcast',             label:'Sensor Metingen',   badge:'Live' },
+    { page:'team',          icon:'people-fill',           label:'Team' },
+    { page:'notificaties',  icon:'bell-fill',             label:'Meldingen',         badge:'…' },
+    { page:'instellingen',  icon:'gear-fill',             label:'Instellingen' },
+  ],
+  machinist: [
+    { sec:'Mijn werk' },
+    { page:'route',  icon:'signpost-2-fill', label:'Maairoute',   badge:'Nieuw' },
+    { page:'kaart',  icon:'map-fill',        label:'Kaart',       badge:'Live' },
+    { page:'velden', icon:'list-check',      label:'Alle velden' },
+  ],
+  stakeholder: [
+    { sec:'Overzicht' },
+    { page:'stakeholder', icon:'file-earmark-check-fill', label:'Mijn contract' },
+    { page:'kaart',       icon:'map-fill',                label:'Kaart',   badge:'Live' },
+  ],
+};
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let CU = null;
+let metingActive = false;
+let metingInterval = null;
+let mapInit = { kaart: false, route: false };
+let chartsInit = false;
+
+/* ═══════════════════════════════════════
+   LOGIN / LOGOUT
+═══════════════════════════════════════ */
+
+function zetGebruikerIn(user) {
+  CU = user;
+  document.getElementById('sb-name').textContent=CU.name;
+  document.getElementById('sb-role').textContent=CU.label;
+  document.getElementById('sb-av').textContent=CU.initials;
+  buildNav(CU.role);
+  fetch('/api/config', {credentials:'same-origin'})
+    .then(function(r){ return r.ok ? r.json() : {}; })
+    .then(function(cfg){ if(cfg.arcgis_key) ARCGIS_KEY = cfg.arcgis_key; })
+    .finally(function(){ initApp(); });
+}
+
+    else { err.style.display='block'; err.textContent = data.error || 'Verkeerde gebruikersnaam of wachtwoord'; }
+  })
+  .catch(() => { err.style.display='block'; err.textContent='Verbindingsfout, probeer opnieuw.'; });
+}
+
+function doLogout() {
+  fetch('/api/logout', {method: 'POST'}).finally(() => {
+    window.location.href = '/';
+  });
+}).finally(() => {
+    CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
+    mapInit={kaart:false,route:false}; chartsInit=false;
+    // Wis hash zodat na opnieuw inloggen de juiste standaardpagina opent
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('app').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('u').value=''; document.getElementById('p').value='';
+  });
+}
+
+
+/* ═══════════════════════════════════════
+   NAV
+═══════════════════════════════════════ */
+function buildNav(role) {
+  const items = NAV[role] || NAV.admin;
+  let html='';
+  items.forEach(it => {
+    if (it.sec) { html+=`<div class="sb-sec">${it.sec}</div>`; return; }
+    html+=`<button class="sb-link" onclick="showPage('${it.page}')">
+      <i class="bi bi-${it.icon}"></i> ${it.label}
+      ${it.badge?`<span class="sb-badge">${it.badge}</span>`:''}
+    </button>`;
+  });
+  document.getElementById('sb-nav-content').innerHTML=html;
+}
+
+/* ═══════════════════════════════════════
+   PAGE ROUTING
+═══════════════════════════════════════ */
+function showPage(page) {
+  // Stop live polling als we van metingen-detail wegnavigeren
+  if (page !== 'metingen' && detailPollInterval) {
+    clearInterval(detailPollInterval); detailPollInterval = null; huidigDevice = null;
+    document.getElementById('meting-detail').style.display = 'none';
+    document.getElementById('meting-overview').style.display = 'block';
+  }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
+  const el=document.getElementById('page-'+page);
+  if(el) el.classList.add('active');
+  const btn=document.querySelector(`.sb-link[onclick="showPage('${page}')"]`);
+  if(btn) btn.classList.add('active');
+
+  const titles={dashboard:'Dashboard',kaart:'Kaart',velden:'Velden',route:'Maairoute',stakeholder:'Mijn Contract',import:'Velden importeren',shapefiles:'Shapefiles',metingen:'Sensor Metingen',team:'Team',notificaties:'Meldingen',instellingen:'Instellingen'};
+  document.getElementById('pg-title').textContent=titles[page]||page;
+  document.getElementById('pg-crumb').textContent=titles[page]||page;
+
+  // Sla huidige pagina op in URL-hash zodat refresh terugkeert op dezelfde pagina
+  if (window.location.hash !== '#' + page) {
+    history.replaceState(null, '', '#' + page);
+  }
+
+  if(page==='kaart'&&!mapInit.kaart){initMap('arcgis-map',true);mapInit.kaart=true;}
+  if(page==='route'&&!mapInit.route){initMap('arcgis-map-route',false);mapInit.route=true;buildRoute();}
+  if(page==='velden') renderVelden(VELDEN);
+  if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+function initApp() {
+  updateTime();
+  const defaultPage = {admin:'dashboard', machinist:'route', stakeholder:'stakeholder'}[CU.role]||'dashboard';
+
+  // Herstel pagina uit URL-hash bij refresh; valideer dat de pagina bestaat en toegankelijk is
+  const geldigePages = {
+    admin:       ['dashboard','kaart','velden','route','metingen','team','notificaties','shapefiles','import','instellingen'],
+    machinist:   ['route','metingen'],
+    stakeholder: ['stakeholder'],
+  }[CU.role] || [];
+  const hashPage = window.location.hash.replace('#','');
+  const startPage = (hashPage && geldigePages.includes(hashPage)) ? hashPage : defaultPage;
+
+  if(CU.role==='machinist') document.getElementById('sensor-indicator').classList.remove('d-none');
+  else document.getElementById('sensor-indicator').classList.add('d-none');
+
+  if(!chartsInit && CU.role==='admin') { initCharts(); chartsInit=true; }
+  renderDashFields();
+  showPage(startPage2);
+  // Laad echte OSM-polygonen op de achtergrond
+  laadVeldenVanOSM();
+}
+
+/* ── TIJD ── */
+function updateTime(){
+  const n=new Date();
+  document.getElementById('tb-time').textContent=
+    n.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})+' '+
+    n.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateTime,1000);
+
+/* ── TIJD ── */
+function updateTime(){
+  const n=new Date();
+  document.getElementById('tb-time').textContent=
+    n.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})+' '+
+    n.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateTime,1000);
+setInterval(updateTime,1000);
+/* ═══════════════════════════════════════
+   ARCGIS MAP — POLYGOON WEERGAVE
+═══════════════════════════════════════ */
+
+/* ═══════════════════════════════════════
+   VELDEN LADEN VIA OPENSTREETMAP (OVERPASS)
+   Haalt echte polygonen op van grasvelden /
+   sportvelden / parken in regio Groningen.
+═══════════════════════════════════════ */
+function polygoonOppervlak(coords) {
+  // Shoelace-formule — resultaat in graden²
+  let a = 0;
+  for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+    a += (coords[j][0] + coords[i][0]) * (coords[j][1] - coords[i][1]);
+  }
+  return Math.abs(a / 2);
+}
+
+async function laadVeldenVanOSM() {
+  // Stap 1: probeer eerst uit de eigen database te laden
+  try {
+    const dbResp = await fetch('/api/velden', { credentials: 'same-origin' });
+    if (dbResp.ok) {
+      const dbVelden = await dbResp.json();
+      if (dbVelden.length > 0) {
+        VELDEN.length = 0;
+        dbVelden.forEach(v => {
+          VELDEN.push(v);
+          // Sync lokale VELD_CAT met DB-waarde (DB wint)
+          if (v.categorie && v.categorie !== 'C') VELD_CAT[v.id] = v.categorie;
+        });
+        localStorage.setItem('veld_cat', JSON.stringify(VELD_CAT));
+        console.log(`✓ ${VELDEN.length} velden geladen uit database`);
+        actualiseerNaLaden();
+        return;
+      }
+    }
+  } catch(e) { console.warn('DB-velden ophalen mislukt, val terug op OSM:', e); }
+
+  // Stap 2: DB is leeg — laad vanuit OpenStreetMap en sla op in DB
+  const bbox = '53.17,6.51,53.27,6.65';
+  const q = `[out:json][timeout:30];(way["landuse"="grass"](${bbox});way["leisure"="pitch"](${bbox});way["landuse"="recreation_ground"](${bbox});way["leisure"="park"]["area"!~"no"](${bbox}););out geom;`;
+  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`;
+
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+
+    const kandidaten = data.elements
+      .filter(el => el.type === 'way' && el.geometry?.length >= 4)
+      .map(el => {
+        const ring = el.geometry.map(p => [p.lon, p.lat]);
+        if (ring[0][0] !== ring[ring.length-1][0] || ring[0][1] !== ring[ring.length-1][1])
+          ring.push(ring[0]);
+        const opp = polygoonOppervlak(ring);
+        const cx  = ring.reduce((s,c) => s + c[0], 0) / ring.length;
+        const cy  = ring.reduce((s,c) => s + c[1], 0) / ring.length;
+        return { el, ring, opp, cx, cy };
+      })
+      .filter(k => k.opp > 1e-7 && k.opp < 7e-4)
+      .sort((a, b) => b.opp - a.opp);
+
+    const gekozen = [];
+    for (const k of kandidaten) {
+      if (gekozen.some(g => Math.hypot(g.cx - k.cx, g.cy - k.cy) < 0.005)) continue;
+      gekozen.push(k);
+      if (gekozen.length >= 14) break;
+    }
+
+    const STATUSSEN = ['OK','OK','Hoog','OK','Te laag','In uitvoering','OK','Hoog','OK','OK','Hoog','Gemaaid','OK','OK'];
+
+    const nieuweVelden = gekozen.map((k, i) => {
+      const tags    = k.el.tags || {};
+      const naam    = tags.name || tags['name:nl'] || `Grasveld ${i + 1}`;
+      const leisure = tags.leisure || '';
+      const loc     = leisure === 'pitch' ? 'Sportpark' : leisure === 'park' ? 'Park' : 'Groningen';
+      const seed    = (k.el.id % 97);
+      const hoogte  = 28 + Math.round((seed * 1.48) % 130);
+      const rawStatus = STATUSSEN[i] || 'OK';
+      const status  = hoogte > 120 ? 'Hoog' : (hoogte < 35 ? 'Te laag' : rawStatus);
+      const prio    = status === 'Hoog' ? 'Hoog' : (status === 'Te laag' ? 'Middel' : 'Laag');
+      return { naam, loc, lat: k.cy, lng: k.cx, hoogte, status, prio,
+               machinist: '—', stakeholder: '—', categorie: 'C', rings: [k.ring] };
+    });
+
+    // Sla op in database
+    const bulkResp = await fetch('/api/velden/bulk', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nieuweVelden)
+    });
+    if (bulkResp.ok) {
+      // Herlaad vanuit DB zodat ID's kloppen
+      const dbResp2 = await fetch('/api/velden', { credentials: 'same-origin' });
+      if (dbResp2.ok) {
+        const saved = await dbResp2.json();
+        VELDEN.length = 0;
+        saved.forEach(v => VELDEN.push(v));
+      }
+    } else {
+      // Fallback: gebruik lokaal zonder DB-id's
+      VELDEN.length = 0;
+      nieuweVelden.forEach((v, i) => VELDEN.push(Object.assign({ id: i+1 }, v)));
+    }
+    console.log(`✓ ${VELDEN.length} velden geladen vanuit OSM en opgeslagen`);
+  } catch (e) {
+    console.warn('Overpass mislukt, gebruik fallback:', e);
+    const fallback = [
+      { naam:'Noorderplantsoen', loc:'Park',      lat:53.2241, lng:6.5541, hoogte:88,  status:'OK',   prio:'Laag',  machinist:'—', stakeholder:'—', categorie:'C', rings:[[[6.5432,53.2218],[6.5465,53.2208],[6.5508,53.2200],[6.5552,53.2188],[6.5592,53.2192],[6.5585,53.2212],[6.5548,53.2232],[6.5502,53.2244],[6.5458,53.2248],[6.5435,53.2234],[6.5432,53.2218]]] },
+      { naam:'Stadspark',         loc:'Park',      lat:53.2095, lng:6.5452, hoogte:125, status:'Hoog', prio:'Hoog',  machinist:'—', stakeholder:'—', categorie:'C', rings:[[[6.5338,53.2075],[6.5405,53.2062],[6.5468,53.2060],[6.5525,53.2072],[6.5548,53.2098],[6.5532,53.2130],[6.5495,53.2152],[6.5448,53.2158],[6.5395,53.2148],[6.5352,53.2125],[6.5338,53.2098],[6.5338,53.2075]]] },
+      { naam:'Kardinge Sportpark',loc:'Sportpark', lat:53.2345, lng:6.6155, hoogte:98,  status:'OK',   prio:'Laag',  machinist:'—', stakeholder:'—', categorie:'C', rings:[[[6.6078,53.2292],[6.6118,53.2282],[6.6168,53.2278],[6.6215,53.2282],[6.6242,53.2305],[6.6238,53.2342],[6.6205,53.2362],[6.6158,53.2368],[6.6108,53.2358],[6.6082,53.2335],[6.6078,53.2292]]] }
+    ];
+    try {
+      await fetch('/api/velden/bulk', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify(fallback) });
+      const dbR = await fetch('/api/velden', { credentials:'same-origin' });
+      if (dbR.ok) { const sv = await dbR.json(); VELDEN.length=0; sv.forEach(v=>VELDEN.push(v)); }
+    } catch(_) {
+      VELDEN.length = 0;
+      fallback.forEach((v,i) => VELDEN.push(Object.assign({ id:i+1 }, v)));
+    }
+  }
+
+  actualiseerNaLaden();
+}
+
+function actualiseerNaLaden() {
+  laadGebruikersLijsten(function(){ actualiseerNaLadenIntern(); });
+}
+function actualiseerNaLadenIntern() {
+  updateMeldingenBadge();
+  vulDashVeldSelector();
+  // Kaartbadge bijwerken
+  document.querySelectorAll('.sb-badge').forEach(b => {
+    if (/^\d+$/.test(b.textContent)) b.textContent = VELDEN.length;
+  });
+  // Ververs kaarten
+  if (mapInit.kaart)  refreshMap('arcgis-map', true);
+  if (mapInit.route)  refreshMap('arcgis-map-route', false);
+  // Ververs huidige pagina
+  if (CU) {
+    renderDashFields();
+    const actievePagina = document.querySelector('.page.active');
+    if (actievePagina?.id === 'page-velden')      renderVelden(VELDEN);
+    if (actievePagina?.id === 'page-route')       buildRoute();
+    if (actievePagina?.id === 'page-stakeholder') renderStakeholder();
+  }
+  updateNalevingStat();
+  // Laad-indicator verbergen
+  const ind = document.getElementById('osm-laad-status');
+  if (ind) {
+    ind.innerHTML = `<i class="bi bi-check2-circle" style="color:var(--g)"></i> ${VELDEN.length} grasvelden geladen vanuit OpenStreetMap`;
+    setTimeout(() => ind.style.display = 'none', 3000);
+  }
+}
+
+// Maak polygoon-object voor ArcGIS
+function maakPolygon(lat, lng, rings) {
+  if (rings?.length) return { type:'polygon', rings };
+  // Noodrechthoek (zou niet meer mogen voorkomen)
+  const dLat = 0.00040, dLng = 0.00065;
+  return { type:'polygon', rings:[[[lng-dLng,lat-dLat],[lng+dLng,lat-dLat],[lng+dLng,lat+dLat],[lng-dLng,lat+dLat],[lng-dLng,lat-dLat]]] };
+}
+
+// Kleur op basis van maai-status
+function statusSymbol(status) {
+  const cfg = {
+    'Hoog':          { fill:[244,67,54,18],   border:[220,30,20,255],   w:3   },
+    'Te laag':       { fill:[255,152,0,18],   border:[230,120,0,255],   w:2.5 },
+    'OK':            { fill:[76,175,80,18],   border:[40,130,45,255],   w:2.5 },
+    'In uitvoering': { fill:[33,150,243,18],  border:[20,100,200,255],  w:2.5 },
+    'Gemaaid':       { fill:[156,39,176,18],  border:[120,20,150,255],  w:2.5 },
+  };
+  const c = cfg[status] || { fill:[120,120,120,15], border:[80,80,80,255], w:2 };
+  return {
+    type: 'simple-fill',
+    color: c.fill,
+    outline: { color: c.border, width: c.w },
+  };
+}
+
+let mapViews = {};  // cache views per container
+
+function initMap(containerId, showAll) {
+  require([
+    'esri/config','esri/Map','esri/views/MapView',
+    'esri/Graphic','esri/layers/GraphicsLayer',
+  ], function(esriConfig, Map, MapView, Graphic, GraphicsLayer) {
+
+    esriConfig.apiKey = ARCGIS_KEY;
+
+    const map = new Map({ basemap:'streets-navigation-vector' });
+    const view = new MapView({
+      container: containerId,
+      map: map,
+      center: [6.5665, 53.2194],
+      zoom: VELDEN.length ? 12 : 8,
+    });
+    mapViews[containerId] = { view, layer: null };
+
+    const layer = new GraphicsLayer();
+
+    // Alleen op de routekaart (machinist) velden tekenen, niet op de live kaart
+    if (!showAll) {
+      const veldenToShow = getRoute();
+      veldenToShow.forEach((v, idx) => {
+        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+        layer.add(new Graphic({
+          geometry: geom,
+          symbol: statusSymbol(v.status),
+          attributes: { ...v, routeNr: idx + 1 },
+          popupTemplate: {
+            title: `{naam} — {loc}`,
+            content: `<table class="esri-widget__table">
+              <tr><th>Status</th><td>{status}</td></tr>
+              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+              <tr><th>Prioriteit</th><td>{prio}</td></tr>
+              <tr><th>Machinist</th><td>{machinist}</td></tr>
+            </table>`,
+          },
+        }));
+        layer.add(new Graphic({
+          geometry: { type:'point', longitude: v.lng, latitude: v.lat },
+          symbol: {
+            type:'text', color:[255,255,255], haloColor:[0,0,0], haloSize:1.5,
+            text: String(idx + 1), font:{ size:10, weight:'bold' },
+          },
+        }));
+      });
+    }
+
+    map.add(layer);
+    mapViews[containerId].layer = layer;
+
+    // Laad shapefile lagen bovenop de velden
+    laadEnToonShapeLayers(containerId);
+  });
+}
+
+// Ververs kaartlaag na import van nieuwe velden
+function refreshMap(containerId, showAll) {
+  const cached = mapViews[containerId];
+  if (!cached) return;
+  require(['esri/Graphic','esri/layers/GraphicsLayer'],
+    function(Graphic, GraphicsLayer) {
+      cached.layer.removeAll();
+      const veldenToShow = showAll ? VELDEN : getRoute();
+      veldenToShow.forEach((v, idx) => {
+        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+        cached.layer.add(new Graphic({
+          geometry: geom,
+          symbol: statusSymbol(v.status),
+          attributes: { ...v, routeNr: showAll ? '' : (idx+1) },
+          popupTemplate: {
+            title:`{naam} — {loc}`,
+            content:`<table class="esri-widget__table">
+              <tr><th>Status</th><td>{status}</td></tr>
+              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+              <tr><th>Prioriteit</th><td>{prio}</td></tr>
+              <tr><th>Machinist</th><td>{machinist}</td></tr>
+            </table>`,
+          },
+        }));
+      });
+    }
+  );
+}
+
+/* ═══════════════════════════════════════
+   ROUTE ALGORITME
+═══════════════════════════════════════ */
+function getRoute() {
+  const prio = {Hoog:0,'Te laag':1,'In uitvoering':2,OK:3,Gemaaid:99};
+  // Machinist ziet alleen zijn eigen toegewezen velden
+  const basis = (CU && CU.role === 'machinist')
+    ? VELDEN.filter(v => v.machinist === CU.name)
+    : VELDEN;
+  return [...basis].sort((a,b) => (prio[a.status]??5) - (prio[b.status]??5));
+}
+
+function buildRoute() {
+  const route = getRoute();
+  const list = document.getElementById('route-list');
+  if(!route.length){
+    list.innerHTML=`<div class="text-center py-5 text-muted" style="font-size:.88rem"><i class="bi bi-inbox fs-3 d-block mb-2"></i>Geen velden toegewezen.<br>Vraag de beheerder om velden aan jou toe te wijzen.</div>`;
+    return;
+  }
+  list.innerHTML = route.map((v,i) => {
+    const urgent = v.status==='Hoog';
+    const medium = v.status==='Te laag'||v.status==='In uitvoering';
+    const done   = v.status==='Gemaaid';
+    const numClass = done?'done':(urgent?'urgent':(medium?'medium':''));
+    const bsClass  = {Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'}[v.status]||'';
+    const hColor   = v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32');
+    return `<div class="route-item">
+      <div class="route-num ${numClass}">${i+1}</div>
+      <div class="route-info">
+        <div class="route-name">${v.naam} &mdash; ${v.loc}</div>
+        <div class="route-sub">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O &nbsp;|&nbsp; <span class="bs ${bsClass}">${v.status}</span></div>
+      </div>
+      <div class="route-hoogte" style="color:${hColor}">${v.hoogte}<span style="font-size:.75rem;font-weight:400">mm</span></div>
+    </div>`;
+  }).join('');
+}
+
+function herbereken() { buildRoute(); }
+
+function openGoogleMaps() {
+  const route = getRoute().slice(0,10); // GM ondersteunt max ~10 waypoints gratis
+  const base  = 'https://www.google.com/maps/dir/';
+  const stops = route.map(v=>`${v.lat},${v.lng}`).join('/');
+  window.open(base + stops, '_blank');
+}
+
+/* ═══════════════════════════════════════
+   SENSOR / METING
+═══════════════════════════════════════ */
+function toggleMeting() {
+  metingActive = !metingActive;
+  const btn=document.getElementById('btn-meting');
+  const ico=document.getElementById('meting-icon');
+  const txt=document.getElementById('meting-txt');
+  const dot=document.getElementById('big-s-dot');
+  const lbl=document.getElementById('big-s-label');
+  const since=document.getElementById('big-s-since');
+  const sdot=document.getElementById('s-dot');
+  const slbl=document.getElementById('s-label');
+
+  if(metingActive){
+    btn.classList.add('active-meting');
+    ico.className='bi bi-stop-fill pulse';
+    txt.textContent='Meting stoppen';
+    dot.className='sensor-dot on'; dot.style.cssText='width:14px;height:14px';
+    lbl.textContent='Sensor actief — meting loopt';
+    since.textContent='Gestart om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+    sdot.className='sensor-dot on';
+    slbl.textContent='Sensor actief';
+    document.getElementById('last-meting').textContent='Meting gestart om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    // Simuleer live metingen
+    metingInterval=setInterval(()=>{
+      const h=Math.round(60+Math.random()*80);
+      document.getElementById('last-meting').textContent=`Laatste waarde: ${h} mm (${new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})})`;
+    },3000);
+  } else {
+    btn.classList.remove('active-meting');
+    ico.className='bi bi-play-fill';
+    txt.textContent='Meting starten';
+    dot.className='sensor-dot off'; dot.style.cssText='width:14px;height:14px';
+    lbl.textContent='Sensor inactief';
+    since.textContent='';
+    sdot.className='sensor-dot off';
+    slbl.textContent='Sensor inactief';
+    clearInterval(metingInterval); metingInterval=null;
+  }
+}
+
+/* ═══════════════════════════════════════
+   VELDEN TABEL
+═══════════════════════════════════════ */
+function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
+function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
+
+let MACHINISTEN  = ['—'];
+let STAKEHOLDERS = ['—'];
+
+function laadGebruikersLijsten(callback) {
+  fetch('/api/users', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(users){
+      MACHINISTEN  = ['—'].concat(users.filter(function(u){ return u.role === 'machinist'; }).map(function(u){ return u.name; }));
+      STAKEHOLDERS = ['—'].concat(users.filter(function(u){ return u.role === 'stakeholder'; }).map(function(u){ return u.name; }));
+      if (callback) callback();
+    })
+    .catch(function(){ if (callback) callback(); });
+}
+
+function renderVelden(data){
+  const isAdmin = CU && CU.role === 'admin';
+  const thMach  = document.getElementById('th-machinist');
+  const thStake = document.getElementById('th-stakeholder');
+  if(thMach)  thMach.style.display  = isAdmin ? '' : 'none';
+  if(thStake) thStake.style.display = isAdmin ? '' : 'none';
+
+  if(!data.length){
+    document.getElementById('v-tbody').innerHTML=`<tr><td colspan="9" class="text-center py-4 text-muted" style="font-size:.85rem">
+      Geen velden gevonden. Importeer velden via <strong>Velden importeren</strong>.
+    </td></tr>`;
+    return;
+  }
+
+  const CAT_KLEUREN = {A:'#1565c0',B:'#2e7d32',C:'#e65100',D:'#6a1b9a'};
+  document.getElementById('v-tbody').innerHTML=data.map(v=>{
+    const machSelect = `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
+        ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
+      </select>`;
+    const stakeSelect = `<select class="form-select form-select-sm" style="min-width:160px" onchange="wijsStakeholderToe(${v.id},this.value)">
+        ${STAKEHOLDERS.map(s=>`<option ${v.stakeholder===s?'selected':''}>${s}</option>`).join('')}
+      </select>`;
+    const huidigCat = veldCategorie(v.id);
+    const catSelect = isAdmin
+      ? `<select class="form-select form-select-sm" style="min-width:80px" onchange="slaVeldCatOp(${v.id},this.value)">
+          ${['A','B','C','D'].map(c=>`<option value="${c}" ${huidigCat===c?'selected':''}>${c}</option>`).join('')}
+        </select>`
+      : `<span class="badge" style="background:${CAT_KLEUREN[huidigCat]||'#555'};color:#fff;font-size:.74rem">${huidigCat}</span>`;
+    const nalev = veldInNaleving(v);
+    const hKleur = !nalev ? '#f44336' : (v.hoogte < (CAT_INST[huidigCat]?.min||0) ? '#ff9800' : '#2e7d32');
+    return `<tr>
+      <td class="ps-3 fw-semibold">${v.naam}</td>
+      <td>${v.loc}</td>
+      <td style="color:#adb5bd;font-size:.78rem">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O</td>
+      <td><strong style="color:${hKleur}">${v.hoogte}</strong> mm</td>
+      <td>${bsBadge(v.status)}</td>
+      <td>${catSelect}</td>
+      <td>${prioBadge(v.prio)}</td>
+      <td>${isAdmin ? machSelect  : v.machinist}</td>
+      <td style="display:${isAdmin?'':'none'}">${stakeSelect}</td>
+    </tr>`;
+  }).join('');
+}
+
+function slaVeldOpInDB(veldId, wijzigingen) {
+  fetch('/api/velden/' + veldId, {
+    method: 'PUT', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(wijzigingen)
+  }).catch(() => {});
+}
+
+function wijsToe(veldId, machinist) {
+  const v = VELDEN.find(x => x.id === veldId);
+  if (!v) return;
+  v.machinist = machinist;
+  slaVeldOpInDB(veldId, { machinist });
+  toonToast('✓ ' + v.naam + ' → Machinist: ' + machinist);
+}
+
+function wijsStakeholderToe(veldId, stakeholder) {
+  const v = VELDEN.find(x => x.id === veldId);
+  if (!v) return;
+  v.stakeholder = stakeholder;
+  slaVeldOpInDB(veldId, { stakeholder });
+  toonToast('✓ ' + v.naam + ' → Stakeholder: ' + stakeholder, '#1565c0');
+}
+
+function filterVelden(){
+  const q=document.getElementById('v-search').value.toLowerCase();
+  const s=document.getElementById('v-filter').value;
+  renderVelden(VELDEN.filter(v=>(v.naam.toLowerCase().includes(q)||v.loc.toLowerCase().includes(q))&&(!s||v.status===s)));
+}
+
+/* dashboard quick list */
+function renderDashFields(){
+  const top=VELDEN.filter(v=>v.status==='Hoog'||v.status==='Te laag').slice(0,5);
+  const el=document.getElementById('dash-field-list');
+  if(!el)return;
+  el.innerHTML=top.map(v=>`<div class="fi">
+    <div class="fi-ic"><i class="bi bi-geo-alt-fill"></i></div>
+    <div class="fi-info"><div class="fi-name">${v.naam} — ${v.loc}</div><div class="fi-sub">${v.hoogte} mm</div></div>
+    ${bsBadge(v.status)}
+  </div>`).join('');
+}
+
+/* ═══════════════════════════════════════
+   INSTELLINGEN
+═══════════════════════════════════════ */
+function saveSettings(){
+  const prefs = {
+    n1: document.getElementById('n1')?.checked ?? true,
+    n2: document.getElementById('n2')?.checked ?? true,
+    n3: document.getElementById('n3')?.checked ?? false,
+    n4: document.getElementById('n4')?.checked ?? true,
+  };
+  localStorage.setItem('notif_prefs', JSON.stringify(prefs));
+  toonToast('✅ Meldingsinstellingen opgeslagen');
+  updateMeldingenBadge();
+}
+function laadNotifPrefs() {
+  try { return JSON.parse(localStorage.getItem('notif_prefs')) || {n1:true,n2:true,n3:false,n4:true}; }
+  catch(e) { return {n1:true,n2:true,n3:false,n4:true}; }
+}
+function berekenMeldingen() {
+  const prefs = laadNotifPrefs();
+  const meldingen = [];
+  VELDEN.forEach(function(v) {
+    const cat = veldCategorie(v.id);
+    const inst = CAT_INST[cat] || CAT_INST['C'];
+    if (prefs.n1 && v.hoogte > inst.max) {
+      meldingen.push({ type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
+    }
+    if (prefs.n2 && v.hoogte < inst.min && v.hoogte > 0) {
+      meldingen.push({ type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
+    }
+    if (prefs.n3 && v.status === 'Gemaaid') {
+      meldingen.push({ type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
+    }
+  });
+  return meldingen;
+}
+function updateMeldingenBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const meldingen = berekenMeldingen();
+  if (meldingen.length > 0) {
+    badge.textContent = meldingen.length;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+  // Update sidebar badge voor meldingen-tab
+  document.querySelectorAll('.sb-link').forEach(btn => {
+    if (btn.getAttribute('onclick') === "showPage('notificaties')") {
+      let b = btn.querySelector('.sb-badge');
+      if (b) b.textContent = meldingen.length > 0 ? meldingen.length : '✓';
+      if (b) b.style.background = meldingen.length > 0 ? 'rgba(244,67,54,.8)' : 'rgba(255,255,255,.18)';
+    }
+  });
+}
+function toggleNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown');
+  if (!dd) return;
+  if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  const meldingen = berekenMeldingen();
+  const list = document.getElementById('notif-list');
+  if (meldingen.length === 0) {
+    list.innerHTML = '<div class="notif-empty"><i class="bi bi-check-circle" style="font-size:1.5rem;color:#2e7d32"></i><br>Geen actieve meldingen</div>';
+  } else {
+    list.innerHTML = meldingen.map(function(m, i) {
+      return `<div class="notif-item" style="cursor:pointer" onclick="sluitNotifDropdown();showPage('notificaties')">
+        <span class="ni-icon">${m.icon}</span>
+        <span style="flex:1">${m.tekst}</span>
+        <i class="bi bi-chevron-right" style="color:#adb5bd;font-size:.75rem;flex-shrink:0"></i>
+      </div>`;
+    }).join('');
+    list.innerHTML += `<div style="padding:.6rem 1rem;text-align:center;border-top:1px solid #f0f0f0">
+      <button onclick="sluitNotifDropdown();showPage('notificaties')" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer">
+        Alle meldingen bekijken <i class="bi bi-arrow-right ms-1"></i>
+      </button>
+    </div>`;
+  }
+  dd.classList.add('open');
+}
+function sluitNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+// Sluit dropdown bij klik buiten
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('notif-dropdown');
+  const btn = document.getElementById('notif-btn');
+  if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
+    dd.classList.remove('open');
+  }
+});
+
+/* ═══════════════════════════════════════
+   SHAPEFILE IMPORT
+═══════════════════════════════════════ */
+let _shpBestand = null;
+let _shapeLayers = [];  // cache van geïmporteerde lagen
+
+function shpDragOver(e) {
+  e.preventDefault();
+  document.getElementById('shp-dropzone').style.borderColor = 'var(--g)';
+  document.getElementById('shp-dropzone').style.background = '#f0faf0';
+}
+function shpDragLeave(e) {
+  document.getElementById('shp-dropzone').style.borderColor = '#c8e6c9';
+  document.getElementById('shp-dropzone').style.background = '#fafffe';
+}
+function shpDrop(e) {
+  e.preventDefault();
+  shpDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) zetShpBestand(file);
+}
+function shpBestandGekozen(inp) {
+  if (inp.files[0]) zetShpBestand(inp.files[0]);
+}
+function zetShpBestand(file) {
+  _shpBestand = file;
+  document.getElementById('shp-bestandsnaam').textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+  document.getElementById('shp-bestandsnaam').style.color = 'var(--g)';
+  const btn = document.getElementById('shp-upload-btn');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+
+function setShpStatus(type, html) {
+  const wrap = document.getElementById('shp-status');
+  const inner = document.getElementById('shp-status-inner');
+  wrap.style.display = 'block';
+  inner.className = 'import-status-' + type;
+  inner.innerHTML = html;
+}
+
+function uploadShapefile() {
+  if (!_shpBestand) return;
+  const kleur = document.getElementById('shp-kleur').value;
+  const fd = new FormData();
+  fd.append('file', _shpBestand);
+  fd.append('kleur', kleur);
+
+  const btn = document.getElementById('shp-upload-btn');
+  btn.disabled = true; btn.style.opacity = '.6';
+  setShpStatus('loading', '<i class="bi bi-arrow-clockwise spin me-2"></i>Shapefile verwerken…');
+
+  fetch('/api/shapefiles', { method: 'POST', credentials: 'same-origin', body: fd })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      btn.disabled = false; btn.style.opacity = '1';
+      if (ok) {
+        setShpStatus('ok', '<i class="bi bi-check-circle-fill me-2"></i><strong>' + d.naam + '</strong> succesvol geïmporteerd — ' + (d.geojson?.features?.length || 0) + ' feature(s).');
+        _shpBestand = null;
+        document.getElementById('shp-bestandsnaam').textContent = 'Nog geen bestand geselecteerd';
+        document.getElementById('shp-bestandsnaam').style.color = '#adb5bd';
+        btn.disabled = true; btn.style.opacity = '.5';
+        laadShapefilePagina();
+        // Kaartlagen vernieuwen
+        if (mapInit.kaart) refreshShapeLayers('arcgis-map');
+        if (mapInit.route) refreshShapeLayers('arcgis-map-route');
+      } else {
+        setShpStatus('err', '<i class="bi bi-x-circle-fill me-2"></i>' + (d.error || 'Onbekende fout'));
+      }
+    })
+    .catch(() => {
+      btn.disabled = false; btn.style.opacity = '1';
+      setShpStatus('err', '<i class="bi bi-x-circle-fill me-2"></i>Verbindingsfout.');
+    });
+}
+
+function laadShapefilePagina() {
+  const lijst = document.getElementById('shp-lagen-lijst');
+  if (!lijst) return;
+  lijst.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-arrow-clockwise spin me-2"></i>Laden…</div>';
+
+  fetch('/api/shapefiles', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(lagen => {
+      _shapeLayers = lagen;
+      const badge = document.getElementById('shp-lagen-count');
+      if (badge) badge.textContent = lagen.length + ' laag' + (lagen.length !== 1 ? 'en' : '');
+
+      if (!lagen.length) {
+        lijst.innerHTML = '<div class="text-center py-5 text-muted" style="font-size:.88rem"><i class="bi bi-layers fs-3 d-block mb-2"></i>Nog geen shapefiles geïmporteerd.</div>';
+        return;
+      }
+
+      lijst.innerHTML = lagen.map(l => {
+        const featureCount = l.geojson?.features?.length || 0;
+        const datum = new Date(l.timestamp).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        return `<div style="display:flex;align-items:center;gap:1rem;padding:.9rem 1.2rem;border-bottom:1px solid #f5f5f5">
+          <div style="width:40px;height:40px;border-radius:10px;background:${l.kleur}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-layers-fill" style="color:${l.kleur};font-size:1.1rem"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="fw-semibold" style="font-size:.88rem;color:#1a1a2e">${l.naam}</div>
+            <div style="font-size:.75rem;color:#adb5bd">${l.bestand} &nbsp;·&nbsp; ${featureCount} feature${featureCount!==1?'s':''} &nbsp;·&nbsp; ${datum}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+            <span style="width:18px;height:18px;border-radius:4px;background:${l.kleur};display:inline-block;border:2px solid rgba(0,0,0,.1)"></span>
+            <button class="btn btn-sm" style="background:#f3f4f6;color:var(--g);border:1px solid #c8e6c9;border-radius:8px;font-size:.78rem;font-weight:600"
+              onclick="showPage('kaart')">
+              <i class="bi bi-map me-1"></i>Bekijk op kaart
+            </button>
+            <button class="btn btn-sm" style="background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:8px;font-size:.78rem"
+              onclick="verwijderShapefile(${l.id},'${l.naam}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    })
+    .catch(() => { lijst.innerHTML = '<div class="text-center py-4 text-danger">Fout bij laden.</div>'; });
+}
+
+function verwijderShapefile(id, naam) {
+  if (!confirm('Laag "' + naam + '" verwijderen?')) return;
+  fetch('/api/shapefiles/' + id, { method: 'DELETE', credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'ok') {
+        laadShapefilePagina();
+        if (mapInit.kaart) refreshShapeLayers('arcgis-map');
+        if (mapInit.route) refreshShapeLayers('arcgis-map-route');
+        toonToast('Laag verwijderd');
+      } else { alert(d.error); }
+    });
+}
+
+/* ── SHAPEFILE LAGEN OP DE KAART ── */
+let shapeLayerGraphics = {};  // { containerId: GraphicsLayer }
+
+function laadEnToonShapeLayers(containerId) {
+  fetch('/api/shapefiles', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(lagen => {
+      _shapeLayers = lagen;
+      _tekenShapeLayers(containerId, lagen);
+    })
+    .catch(() => {});
+}
+
+function _tekenShapeLayers(containerId, lagen) {
+  require(['esri/Graphic', 'esri/layers/GraphicsLayer'], function(Graphic, GraphicsLayer) {
+    const cached = mapViews[containerId];
+    if (!cached) return;
+
+    // Verwijder oude shapefile-laag als die er al is
+    if (shapeLayerGraphics[containerId]) {
+      cached.view.map.remove(shapeLayerGraphics[containerId]);
+    }
+
+    const layer = new GraphicsLayer({ title: 'Shapefiles', listMode: 'hide' });
+
+    lagen.forEach(l => {
+      if (!l.geojson || !l.geojson.features) return;
+      const kleur = _hexToRgba(l.kleur, 40);
+      const rand  = _hexToRgba(l.kleur, 220);
+
+      l.geojson.features.forEach(feat => {
+        if (!feat.geometry || feat.geometry.type !== 'Polygon') return;
+        const rings = feat.geometry.coordinates;
+        layer.add(new Graphic({
+          geometry: { type: 'polygon', rings },
+          symbol: {
+            type: 'simple-fill',
+            color: kleur,
+            outline: { color: rand, width: 2.5 },
+          },
+          attributes: { ...feat.properties, _laag: l.naam },
+          popupTemplate: {
+            title: feat.properties.naam || l.naam,
+            content: `<table class="esri-widget__table">
+              ${Object.entries(feat.properties).map(([k,v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}
+              <tr><th>Laag</th><td>${l.naam}</td></tr>
+            </table>`,
+          },
+        }));
+      });
+    });
+
+    cached.view.map.add(layer);
+    shapeLayerGraphics[containerId] = layer;
+  });
+}
+
+function refreshShapeLayers(containerId) {
+  fetch('/api/shapefiles', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(lagen => { _shapeLayers = lagen; _tekenShapeLayers(containerId, lagen); })
+    .catch(() => {});
+}
+
+function _hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return [r, g, b, alpha];
+}
+
+// Sessie controleren bij laden — geen flash van inlogscherm
+fetch('/api/me', { cache: 'no-store', credentials: 'same-origin' })
+  .then(r => r.ok ? r.json() : null)
+  .then(user => {
+    document.getElementById('loading-screen').style.display = 'none';
+    if (user && user.role === 'machinist') {
+      zetGebruikerIn(user);
+    } else {
+      window.location.href = '/';
+    }
+  })
+  .catch(() => { window.location.href = '/'; });
+
+</script>
+</body>
+</html>

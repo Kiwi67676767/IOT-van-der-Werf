@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, request, jsonify, session
+from flask import Flask, send_from_directory, request, jsonify, session, redirect
 import os
 import io
 import json
@@ -702,9 +702,57 @@ def get_metingen():
 
 # ── STATIC FILES ──
 
+# Rol-specifieke HTML bestanden die alleen via beschermde routes mogen worden geserved
+_PROTECTED_ROLE_FILES = {'admin.html', 'machinist.html', 'stakeholder.html'}
+
+
 @app.route('/')
 def index():
     return send_from_directory(DIST_DIR, 'index.html')
+
+
+@app.route('/dashboard')
+def dashboard_redirect():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/')
+    user = User.query.get(user_id)
+    if not user:
+        return redirect('/')
+    return redirect('/' + user.role)
+
+
+@app.route('/admin')
+def serve_admin():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/')
+    user = User.query.get(user_id)
+    if not user or user.role != 'admin':
+        return redirect('/')
+    return send_from_directory(DIST_DIR, 'admin.html')
+
+
+@app.route('/machinist')
+def serve_machinist():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/')
+    user = User.query.get(user_id)
+    if not user or user.role != 'machinist':
+        return redirect('/')
+    return send_from_directory(DIST_DIR, 'machinist.html')
+
+
+@app.route('/stakeholder')
+def serve_stakeholder():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/')
+    user = User.query.get(user_id)
+    if not user or user.role != 'stakeholder':
+        return redirect('/')
+    return send_from_directory(DIST_DIR, 'stakeholder.html')
 
 
 @app.route('/<path:path>')
@@ -712,6 +760,9 @@ def serve_file(path):
     # Blokkeer API routes
     if path.startswith('api/'):
         return jsonify({'error': 'Not found'}), 404
+    # Blokkeer directe toegang tot rol-specifieke HTML bestanden
+    if path in _PROTECTED_ROLE_FILES:
+        return redirect('/')
     full_path = os.path.join(DIST_DIR, path)
     if os.path.isfile(full_path):
         return send_from_directory(DIST_DIR, path)
