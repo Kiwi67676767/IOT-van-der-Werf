@@ -1176,6 +1176,8 @@ function doLogout() {
   fetch('/api/logout', {method: 'POST'}).finally(() => {
     CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
     mapInit={kaart:false,route:false}; chartsInit=false;
+    // Wis hash zodat na opnieuw inloggen de juiste standaardpagina opent
+    history.replaceState(null, '', window.location.pathname);
     document.getElementById('app').style.display='none';
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('u').value=''; document.getElementById('p').value='';
@@ -1220,6 +1222,11 @@ function showPage(page) {
   document.getElementById('pg-title').textContent=titles[page]||page;
   document.getElementById('pg-crumb').textContent=titles[page]||page;
 
+  // Sla huidige pagina op in URL-hash zodat refresh terugkeert op dezelfde pagina
+  if (window.location.hash !== '#' + page) {
+    history.replaceState(null, '', '#' + page);
+  }
+
   if(page==='kaart'&&!mapInit.kaart){initMap('arcgis-map',true);mapInit.kaart=true;}
   if(page==='route'&&!mapInit.route){initMap('arcgis-map-route',false);mapInit.route=true;buildRoute();}
   if(page==='velden') renderVelden(VELDEN);
@@ -1239,7 +1246,16 @@ function toggleSidebar(){document.getElementById('sidebar').classList.toggle('op
 ═══════════════════════════════════════ */
 function initApp() {
   updateTime();
-  const startPage = {admin:'dashboard', machinist:'route', stakeholder:'stakeholder'}[CU.role]||'dashboard';
+  const defaultPage = {admin:'dashboard', machinist:'route', stakeholder:'stakeholder'}[CU.role]||'dashboard';
+
+  // Herstel pagina uit URL-hash bij refresh; valideer dat de pagina bestaat en toegankelijk is
+  const geldigePages = {
+    admin:       ['dashboard','kaart','velden','route','metingen','team','notificaties','shapefiles','import','instellingen'],
+    machinist:   ['route','metingen'],
+    stakeholder: ['stakeholder'],
+  }[CU.role] || [];
+  const hashPage = window.location.hash.replace('#','');
+  const startPage = (hashPage && geldigePages.includes(hashPage)) ? hashPage : defaultPage;
 
   if(CU.role==='machinist') document.getElementById('sensor-indicator').classList.remove('d-none');
   else document.getElementById('sensor-indicator').classList.add('d-none');
