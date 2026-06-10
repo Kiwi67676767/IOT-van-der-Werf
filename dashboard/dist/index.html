@@ -632,6 +632,39 @@
       <!-- ══ SENSOR METINGEN ══ -->
       <div id="page-metingen" class="page">
 
+        <!-- ALLE SENSOR DATA TABEL -->
+        <div class="dc mb-4" id="alle-sensor-card">
+          <div class="dch">
+            <i class="bi bi-table" style="color:var(--g)"></i>
+            <h6>Alle Sensor Data</h6>
+            <span id="alle-sensor-count" class="ms-2 badge" style="background:var(--gp);color:var(--g);font-size:.72rem"></span>
+            <div class="ms-auto d-flex gap-2 align-items-center">
+              <select id="alle-sensor-filter" class="form-select form-select-sm" style="width:130px;font-size:.78rem" onchange="filterAlleSensorData()">
+                <option value="">Alle statussen</option>
+                <option value="OK">OK</option>
+                <option value="Te hoog">Te hoog</option>
+                <option value="Te laag">Te laag</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:transparent">
+                <tr>
+                  <th class="ps-3" style="border:none">Device</th>
+                  <th style="border:none">Grashoogte</th>
+                  <th style="border:none">Status</th>
+                  <th style="border:none">Locatie</th>
+                  <th style="border:none">Tijdstip</th>
+                </tr>
+              </thead>
+              <tbody id="alle-sensor-tbody">
+                <tr><td colspan="5" class="text-center py-4 text-muted">Laden…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- OVERZICHT: stat cards + device kaarten -->
         <div id="meting-overview">
           <div class="row g-3 mb-3" id="meting-stats"></div>
@@ -1211,8 +1244,8 @@ function bouwVeldChart(selector, veld, hoogte, toonTabel) {
         dataLabels: { enabled: false },
         legend: { show: true, position: 'top', fontSize: '12px' },
         xaxis: { type: 'datetime', categories: cats, labels: { datetimeUTC: false } },
-        yaxis: { labels: { formatter: function(v){ return v + ' mm'; } }, min: 0 },
-        tooltip: { x: { format: 'dd MMM yyyy HH:mm' }, y: { formatter: function(v){ return v + ' mm'; } } },
+        yaxis: { labels: { formatter: function(v){ return Math.round(v) + ' mm'; } }, min: 0 },
+        tooltip: { x: { format: 'dd MMM yyyy HH:mm' }, y: { formatter: function(v){ return Math.round(v) + ' mm'; } } },
         grid: { borderColor: '#f0f0f0' },
       });
       chart.render();
@@ -2046,11 +2079,54 @@ async function importeerGeselecteerde() {
 let detailPollInterval = null;
 let huidigDevice = null;
 
+let _alleSensorData = [];
+
+function vulAlleSensorTabel(data) {
+  const filterVal = (document.getElementById('alle-sensor-filter')?.value) || '';
+  const weergave = filterVal
+    ? data.filter(m => {
+        const h = m.gras_hoogte_cm;
+        const st = h > 12 ? 'Te hoog' : (h < 4 ? 'Te laag' : 'OK');
+        return st === filterVal;
+      })
+    : data;
+
+  document.getElementById('alle-sensor-count').textContent = weergave.length + ' meting' + (weergave.length !== 1 ? 'en' : '');
+
+  if (!weergave.length) {
+    document.getElementById('alle-sensor-tbody').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Geen metingen gevonden.</td></tr>';
+    return;
+  }
+
+  document.getElementById('alle-sensor-tbody').innerHTML = weergave.map((m, i) => {
+    const h = m.gras_hoogte_cm;
+    const status = h > 12 ? '<span class="bs bsh">Te hoog</span>' : (h < 4 ? '<span class="bs bsl">Te laag</span>' : '<span class="bs bsok">OK</span>');
+    const kleur = h > 12 ? '#f44336' : (h < 4 ? '#ff9800' : '#2e7d32');
+    const tijd = m.timestamp ? new Date(m.timestamp + 'Z').toLocaleString('nl-NL') : '—';
+    const lat = m.latitude != null ? m.latitude.toFixed(4) + '°N' : '—';
+    const lon = m.longitude != null ? ', ' + m.longitude.toFixed(4) + '°O' : '';
+    return `<tr>
+      <td class="ps-3 fw-semibold" style="font-size:.83rem">${m.device_id || 'onbekend'}</td>
+      <td><strong style="color:${kleur}">${h}</strong> cm</td>
+      <td>${status}</td>
+      <td style="font-size:.78rem;color:#adb5bd">${lat}${lon}</td>
+      <td style="font-size:.78rem">${tijd}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterAlleSensorData() {
+  vulAlleSensorTabel(_alleSensorData);
+}
+
 function laadMetingen() {
   document.getElementById('meting-refresh-lbl').textContent = 'Laden…';
   fetch('/api/metingen')
     .then(r => r.json())
     .then(data => {
+      _alleSensorData = data;
+      vulAlleSensorTabel(data);
+
       const totaal = data.length;
       const devices = [...new Set(data.map(m => m.device_id).filter(Boolean))];
       const gem = totaal ? Math.round(data.reduce((s,m) => s + (m.gras_hoogte_cm||0), 0) / totaal) : 0;
