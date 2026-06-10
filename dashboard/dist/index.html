@@ -1770,13 +1770,40 @@ function renderStakeholder(){
    TEAM
 ═══════════════════════════════════════ */
 function renderTeam(){
-  document.getElementById('team-cards').innerHTML=TEAM.map(t=>`<div class="dc mb-3">
-    <div class="dcb d-flex align-items-center gap-3">
-      <div style="width:46px;height:46px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">${t.initials}</div>
-      <div style="flex:1;min-width:0"><div class="fw-semibold" style="font-size:.88rem">${t.name}</div><div style="font-size:.76rem;color:#adb5bd">${t.veld}</div></div>
-      <span class="badge" style="background:${t.status==='Actief'?'var(--gp)':'#f5f5f5'};color:${t.status==='Actief'?'var(--g)':'#6c757d'}">${t.status}</span>
-    </div>
-  </div>`).join('');
+  const el = document.getElementById('team-cards');
+  el.innerHTML = '<div class="text-center py-3 text-muted" style="font-size:.84rem"><i class="bi bi-arrow-clockwise spin me-2"></i>Laden…</div>';
+
+  fetch('/api/users', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : [])
+    .then(users => {
+      const rolKleur = { admin: 'var(--g)', machinist: '#2196f3', stakeholder: '#9c27b0' };
+      const rolBg    = { admin: 'var(--gp)', machinist: '#e3f2fd', stakeholder: '#f3e5f5' };
+      const rolLabel = { admin: 'Beheerder', machinist: 'Machinist', stakeholder: 'Stakeholder' };
+
+      el.innerHTML = users.map(u => {
+        const initials = u.initials || (u.name || u.username).slice(0,2).toUpperCase();
+        const kleur = rolKleur[u.role] || '#6c757d';
+        const bg    = rolBg[u.role]    || '#f5f5f5';
+        const label = rolLabel[u.role] || u.role;
+
+        // Zoek toegewezen veld voor machinisten
+        const toegewezenVeld = u.role === 'machinist'
+          ? (VELDEN.find(v => v.machinist === u.name)?.naam || '—')
+          : (u.role === 'stakeholder' ? (u.contractName || '—') : '—');
+
+        return `<div class="dc mb-3">
+          <div class="dcb d-flex align-items-center gap-3">
+            <div style="width:46px;height:46px;border-radius:50%;background:${kleur};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">${initials}</div>
+            <div style="flex:1;min-width:0">
+              <div class="fw-semibold" style="font-size:.88rem">${u.name || u.username}</div>
+              <div style="font-size:.76rem;color:#adb5bd">${toegewezenVeld}</div>
+            </div>
+            <span class="badge" style="background:${bg};color:${kleur}">${label}</span>
+          </div>
+        </div>`;
+      }).join('') || '<div class="text-muted" style="font-size:.84rem;padding:.5rem">Geen teamleden gevonden.</div>';
+    })
+    .catch(() => { el.innerHTML = '<div class="text-danger" style="font-size:.84rem;padding:.5rem">Fout bij laden team.</div>'; });
 
   document.getElementById('act-log').innerHTML=ACTIVITY.map(a=>`<div class="d-flex gap-3 mb-3">
     <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0"><i class="bi bi-${a.icon}"></i></div>
@@ -2395,6 +2422,7 @@ function maakGebruiker() {
       document.getElementById('nieuw-gebruiker-form').style.display = 'none';
       laadGebruikers();
       laadGebruikersLijsten(function(){ renderVelden(VELDEN); });
+      if (document.getElementById('page-team')?.classList.contains('active')) renderTeam();
     } else {
       errEl.textContent = d.error || 'Fout bij aanmaken.'; errEl.style.display = 'block';
     }
@@ -2450,6 +2478,7 @@ function slaEditOp() {
       bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
       laadGebruikers();
       laadGebruikersLijsten(function(){ renderVelden(VELDEN); });
+      if (document.getElementById('page-team')?.classList.contains('active')) renderTeam();
     } else {
       errEl.textContent = d.error || 'Fout bij opslaan.'; errEl.style.display = 'block';
     }
