@@ -564,23 +564,9 @@ function zetGebruikerIn(user) {
     .finally(function(){ initApp(); });
 }
 
-    else { err.style.display='block'; err.textContent = data.error || 'Verkeerde gebruikersnaam of wachtwoord'; }
-  })
-  .catch(() => { err.style.display='block'; err.textContent='Verbindingsfout, probeer opnieuw.'; });
-}
-
 function doLogout() {
   fetch('/api/logout', {method: 'POST'}).finally(() => {
     window.location.href = '/';
-  });
-}).finally(() => {
-    CU=null; metingActive=false; if(metingInterval){clearInterval(metingInterval);metingInterval=null;}
-    mapInit={kaart:false,route:false}; chartsInit=false;
-    // Wis hash zodat na opnieuw inloggen de juiste standaardpagina opent
-    history.replaceState(null, '', window.location.pathname);
-    document.getElementById('app').style.display='none';
-    document.getElementById('login-screen').style.display='flex';
-    document.getElementById('u').value=''; document.getElementById('p').value='';
   });
 }
 
