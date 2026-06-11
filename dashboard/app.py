@@ -246,27 +246,12 @@ with app.app_context():
         db.session.commit()
         print("Rol van 'admin' hersteld naar beheerder.")
 
-    # Seed Noorderplantsoen shapefile als er nog geen lagen zijn
-    if ShapeLayer.query.count() == 0:
-        npl_geojson = {
-            "type": "FeatureCollection",
-            "features": [{
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[[6.5605,53.2228],[6.5648,53.2235],[6.5685,53.2232],[6.5705,53.2218],[6.5708,53.22],[6.5695,53.2185],[6.5672,53.2178],[6.5648,53.218],[6.5628,53.2188],[6.5612,53.22],[6.56,53.2214],[6.5605,53.2228]]]
-                },
-                "properties": {"naam": "Noorderplantsoen", "plaats": "Groningen", "type": "stadspark"}
-            }]
-        }
-        db.session.add(ShapeLayer(
-            naam='Noorderplantsoen',
-            bestand='Noorderplantsoen.shp',
-            geojson=json.dumps(npl_geojson),
-            kleur='#2e7d32',
-        ))
+    # Verwijder oude demo-shapefile als die er nog in zit
+    npl = ShapeLayer.query.filter_by(naam='Noorderplantsoen').first()
+    if npl:
+        db.session.delete(npl)
         db.session.commit()
-        print('Noorderplantsoen shapefile geseed.')
+        print('Noorderplantsoen demo-shapefile verwijderd.')
 
     # Seed demo-metingen per veld als er nog geen metingen in de buurt zijn
     import random

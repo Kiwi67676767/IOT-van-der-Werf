@@ -522,12 +522,6 @@ function buildNav(role) {
    PAGE ROUTING
 ═══════════════════════════════════════ */
 function showPage(page) {
-  // Stop live polling als we van metingen-detail wegnavigeren
-  if (page !== 'metingen' && detailPollInterval) {
-    clearInterval(detailPollInterval); detailPollInterval = null; huidigDevice = null;
-    document.getElementById('meting-detail').style.display = 'none';
-    document.getElementById('meting-overview').style.display = 'block';
-  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -562,8 +556,8 @@ function initApp() {
   // Herstel pagina uit URL-hash bij refresh; valideer dat de pagina bestaat en toegankelijk is
   const geldigePages = {
     admin:       ['dashboard','kaart','velden','route','metingen','team','notificaties','shapefiles','import','instellingen'],
-    machinist:   ['route','metingen'],
-    stakeholder: ['stakeholder'],
+    machinist:   ['route','kaart','velden'],
+    stakeholder: ['stakeholder','kaart'],
   }[CU.role] || [];
   const hashPage = window.location.hash.replace('#','');
   const startPage = (hashPage && geldigePages.includes(hashPage)) ? hashPage : defaultPage;
