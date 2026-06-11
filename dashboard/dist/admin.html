@@ -404,7 +404,11 @@
           <div class="dch">
             <i class="bi bi-list-check" style="color:var(--g)"></i>
             <h6>Veldenlijst</h6>
-            <div class="ms-auto d-flex gap-2">
+            <div class="ms-auto d-flex gap-2 align-items-center">
+              <button class="btn btn-sm" style="background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:9px;font-size:.78rem;font-weight:600"
+                onclick="wisAlleVelden()">
+                <i class="bi bi-trash me-1"></i>Wis alle velden
+              </button>
               <div class="input-group input-group-sm" style="width:170px">
                 <span class="input-group-text" style="background:#f9fafb;border-color:#e5e7eb;border-radius:9px 0 0 9px"><i class="bi bi-search" style="color:#9ca3af;font-size:.8rem"></i></span>
                 <input class="form-control" placeholder="Zoeken…" id="v-search" oninput="filterVelden()" style="border-color:#e5e7eb;border-radius:0 9px 9px 0;font-size:.82rem" />
@@ -1605,6 +1609,23 @@ function filterVelden(){
   const q=document.getElementById('v-search').value.toLowerCase();
   const s=document.getElementById('v-filter').value;
   renderVelden(VELDEN.filter(v=>(v.naam.toLowerCase().includes(q)||v.loc.toLowerCase().includes(q))&&(!s||v.status===s)));
+}
+
+function wisAlleVelden() {
+  if (!confirm('Alle velden verwijderen uit de database? Dit kan niet ongedaan worden gemaakt.')) return;
+  fetch('/api/velden/all', { method: 'DELETE', credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'ok') {
+        VELDEN.length = 0;
+        renderVelden([]);
+        renderDashFields();
+        toonToast(d.verwijderd + ' velden verwijderd');
+        if (mapInit.kaart) refreshMap('arcgis-map', true);
+        if (mapInit.route) refreshMap('arcgis-map-route', false);
+      } else { alert(d.error); }
+    })
+    .catch(() => alert('Verbindingsfout'));
 }
 
 /* dashboard quick list */

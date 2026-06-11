@@ -547,6 +547,17 @@ def update_veld(veld_id):
     return jsonify(veld.to_dict())
 
 
+@app.route('/api/velden/all', methods=['DELETE'])
+def delete_all_velden():
+    me = User.query.get(session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    aantal = Veld.query.count()
+    Veld.query.delete()
+    db.session.commit()
+    return jsonify({'status': 'ok', 'verwijderd': aantal})
+
+
 @app.route('/api/velden/<int:veld_id>', methods=['DELETE'])
 def delete_veld(veld_id):
     me = User.query.get(session.get('user_id'))
