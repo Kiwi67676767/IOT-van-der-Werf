@@ -1265,112 +1265,23 @@ function polygoonOppervlak(coords) {
 }
 
 async function laadVeldenVanOSM() {
-  // Stap 1: probeer eerst uit de eigen database te laden
+  // Laad velden alleen vanuit de database — geen OSM of demo-data
   try {
     const dbResp = await fetch('/api/velden', { credentials: 'same-origin' });
     if (dbResp.ok) {
       const dbVelden = await dbResp.json();
-      if (dbVelden.length > 0) {
-        VELDEN.length = 0;
-        dbVelden.forEach(v => {
-          VELDEN.push(v);
-          // Sync lokale VELD_CAT met DB-waarde (DB wint)
-          if (v.categorie && v.categorie !== 'C') VELD_CAT[v.id] = v.categorie;
-        });
-        localStorage.setItem('veld_cat', JSON.stringify(VELD_CAT));
-        console.log(`✓ ${VELDEN.length} velden geladen uit database`);
-        actualiseerNaLaden();
-        return;
-      }
-    }
-  } catch(e) { console.warn('DB-velden ophalen mislukt, val terug op OSM:', e); }
-
-  // Stap 2: DB is leeg — laad vanuit OpenStreetMap en sla op in DB
-  const bbox = '53.17,6.51,53.27,6.65';
-  const q = `[out:json][timeout:30];(way["landuse"="grass"](${bbox});way["leisure"="pitch"](${bbox});way["landuse"="recreation_ground"](${bbox});way["leisure"="park"]["area"!~"no"](${bbox}););out geom;`;
-  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`;
-
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-
-    const kandidaten = data.elements
-      .filter(el => el.type === 'way' && el.geometry?.length >= 4)
-      .map(el => {
-        const ring = el.geometry.map(p => [p.lon, p.lat]);
-        if (ring[0][0] !== ring[ring.length-1][0] || ring[0][1] !== ring[ring.length-1][1])
-          ring.push(ring[0]);
-        const opp = polygoonOppervlak(ring);
-        const cx  = ring.reduce((s,c) => s + c[0], 0) / ring.length;
-        const cy  = ring.reduce((s,c) => s + c[1], 0) / ring.length;
-        return { el, ring, opp, cx, cy };
-      })
-      .filter(k => k.opp > 1e-7 && k.opp < 7e-4)
-      .sort((a, b) => b.opp - a.opp);
-
-    const gekozen = [];
-    for (const k of kandidaten) {
-      if (gekozen.some(g => Math.hypot(g.cx - k.cx, g.cy - k.cy) < 0.005)) continue;
-      gekozen.push(k);
-      if (gekozen.length >= 14) break;
-    }
-
-    const STATUSSEN = ['OK','OK','Hoog','OK','Te laag','In uitvoering','OK','Hoog','OK','OK','Hoog','Gemaaid','OK','OK'];
-
-    const nieuweVelden = gekozen.map((k, i) => {
-      const tags    = k.el.tags || {};
-      const naam    = tags.name || tags['name:nl'] || `Grasveld ${i + 1}`;
-      const leisure = tags.leisure || '';
-      const loc     = leisure === 'pitch' ? 'Sportpark' : leisure === 'park' ? 'Park' : 'Groningen';
-      const seed    = (k.el.id % 97);
-      const hoogte  = 28 + Math.round((seed * 1.48) % 130);
-      const rawStatus = STATUSSEN[i] || 'OK';
-      const status  = hoogte > 120 ? 'Hoog' : (hoogte < 35 ? 'Te laag' : rawStatus);
-      const prio    = status === 'Hoog' ? 'Hoog' : (status === 'Te laag' ? 'Middel' : 'Laag');
-      return { naam, loc, lat: k.cy, lng: k.cx, hoogte, status, prio,
-               machinist: '—', stakeholder: '—', categorie: 'C', rings: [k.ring] };
-    });
-
-    // Sla op in database
-    const bulkResp = await fetch('/api/velden/bulk', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nieuweVelden)
-    });
-    if (bulkResp.ok) {
-      // Herlaad vanuit DB zodat ID's kloppen
-      const dbResp2 = await fetch('/api/velden', { credentials: 'same-origin' });
-      if (dbResp2.ok) {
-        const saved = await dbResp2.json();
-        VELDEN.length = 0;
-        saved.forEach(v => VELDEN.push(v));
-      }
-    } else {
-      // Fallback: gebruik lokaal zonder DB-id's
       VELDEN.length = 0;
-      nieuweVelden.forEach((v, i) => VELDEN.push(Object.assign({ id: i+1 }, v)));
+      dbVelden.forEach(v => {
+        VELDEN.push(v);
+        if (v.categorie && v.categorie !== 'C') VELD_CAT[v.id] = v.categorie;
+      });
+      localStorage.setItem('veld_cat', JSON.stringify(VELD_CAT));
+      console.log(`✓ ${VELDEN.length} velden geladen uit database`);
     }
-    console.log(`✓ ${VELDEN.length} velden geladen vanuit OSM en opgeslagen`);
-  } catch (e) {
-    console.warn('Overpass mislukt, gebruik fallback:', e);
-    const fallback = [
-      { naam:'Noorderplantsoen', loc:'Park',      lat:53.2241, lng:6.5541, hoogte:88,  status:'OK',   prio:'Laag',  machinist:'—', stakeholder:'—', categorie:'C', rings:[[[6.5432,53.2218],[6.5465,53.2208],[6.5508,53.2200],[6.5552,53.2188],[6.5592,53.2192],[6.5585,53.2212],[6.5548,53.2232],[6.5502,53.2244],[6.5458,53.2248],[6.5435,53.2234],[6.5432,53.2218]]] },
-      { naam:'Stadspark',         loc:'Park',      lat:53.2095, lng:6.5452, hoogte:125, status:'Hoog', prio:'Hoog',  machinist:'—', stakeholder:'—', categorie:'C', rings:[[[6.5338,53.2075],[6.5405,53.2062],[6.5468,53.2060],[6.5525,53.2072],[6.5548,53.2098],[6.5532,53.2130],[6.5495,53.2152],[6.5448,53.2158],[6.5395,53.2148],[6.5352,53.2125],[6.5338,53.2098],[6.5338,53.2075]]] },
-      { naam:'Kardinge Sportpark',loc:'Sportpark', lat:53.2345, lng:6.6155, hoogte:98,  status:'OK',   prio:'Laag',  machinist:'—', stakeholder:'—', categorie:'C', rings:[[[6.6078,53.2292],[6.6118,53.2282],[6.6168,53.2278],[6.6215,53.2282],[6.6242,53.2305],[6.6238,53.2342],[6.6205,53.2362],[6.6158,53.2368],[6.6108,53.2358],[6.6082,53.2335],[6.6078,53.2292]]] }
-    ];
-    try {
-      await fetch('/api/velden/bulk', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify(fallback) });
-      const dbR = await fetch('/api/velden', { credentials:'same-origin' });
-      if (dbR.ok) { const sv = await dbR.json(); VELDEN.length=0; sv.forEach(v=>VELDEN.push(v)); }
-    } catch(_) {
-      VELDEN.length = 0;
-      fallback.forEach((v,i) => VELDEN.push(Object.assign({ id:i+1 }, v)));
-    }
-  }
-
+  } catch(e) { console.warn('Velden ophalen mislukt:', e); }
   actualiseerNaLaden();
 }
+
 
 function actualiseerNaLaden() {
   laadGebruikersLijsten(function(){ actualiseerNaLadenIntern(); });

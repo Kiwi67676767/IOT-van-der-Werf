@@ -253,6 +253,14 @@ with app.app_context():
         db.session.commit()
         print('Noorderplantsoen demo-shapefile verwijderd.')
 
+    # Verwijder demo/OSM-velden (herkenbaar aan machinist='—')
+    demo_velden = Veld.query.filter_by(machinist='—').all()
+    if demo_velden:
+        for v in demo_velden:
+            db.session.delete(v)
+        db.session.commit()
+        print(f'{len(demo_velden)} demo-velden verwijderd.')
+
     # Seed demo-metingen per veld als er nog geen metingen in de buurt zijn
     import random
     import datetime as dt
