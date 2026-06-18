@@ -5,6 +5,7 @@ import json
 import zipfile
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect as _sa_inspect, text as _sa_text
 from werkzeug.security import check_password_hash
 import bcrypt as _bcrypt
 
@@ -61,13 +62,14 @@ class User(db.Model):
 
     def to_dict(self):
         return {
-            'username':       self.username,
-            'name':           self.name,
-            'role':           self.role,
-            'initials':       self.initials,
-            'label':          self.label,
-            'assignedVelden': json.loads(self.assigned_velden) if self.assigned_velden else None,
-            'contractName':   self.contract_name,
+            'id':              self.id,
+            'username':        self.username,
+            'name':            self.name,
+            'role':            self.role,
+            'initials':        self.initials,
+            'label':           self.label,
+            'assignedVelden':  json.loads(self.assigned_velden) if self.assigned_velden else None,
+            'contractName':    self.contract_name,
         }
 
 
@@ -81,25 +83,44 @@ class Veld(db.Model):
     hoogte     = db.Column(db.Integer, default=80)
     status     = db.Column(db.String(50), default='OK')
     prio       = db.Column(db.String(20), default='Laag')
+    # Legacy: losse naam-string. Blijft bestaan als fallback voor oude/niet-gemigreerde
+    # records, maar is NIET meer de bron van waarheid — zie machinist_id/stakeholder_id.
     machinist  = db.Column(db.String(100), default='—')
     stakeholder = db.Column(db.String(100), default='—')
+    # Echte koppeling op user-ID. Dit voorkomt dat een toewijzing "kwijt" raakt
+    # zodra een gebruiker hernoemd wordt, of dat twee gebruikers met dezelfde
+    # naam door elkaar gehaald worden.
+    machinist_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    stakeholder_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     categorie  = db.Column(db.String(5), default='C')
     rings      = db.Column(db.Text)    # JSON polygoon-rings
 
     def to_dict(self):
+        mach_naam = self.machinist or '—'
+        if self.machinist_id:
+            u = db.session.get(User, self.machinist_id)
+            if u:
+                mach_naam = u.name or u.username
+        stake_naam = self.stakeholder or '—'
+        if self.stakeholder_id:
+            u = db.session.get(User, self.stakeholder_id)
+            if u:
+                stake_naam = u.contract_name or u.name or u.username
         return {
-            'id':         self.id,
-            'naam':       self.naam,
-            'loc':        self.loc or '',
-            'lat':        self.lat or 0,
-            'lng':        self.lng or 0,
-            'hoogte':     self.hoogte or 0,
-            'status':     self.status or 'OK',
-            'prio':       self.prio or 'Laag',
-            'machinist':  self.machinist or '—',
-            'stakeholder': self.stakeholder or '—',
-            'categorie':  self.categorie or 'C',
-            'rings':      json.loads(self.rings) if self.rings else None,
+            'id':            self.id,
+            'naam':          self.naam,
+            'loc':           self.loc or '',
+            'lat':           self.lat or 0,
+            'lng':           self.lng or 0,
+            'hoogte':        self.hoogte or 0,
+            'status':        self.status or 'OK',
+            'prio':          self.prio or 'Laag',
+            'machinistId':   self.machinist_id,
+            'machinist':     mach_naam,
+            'stakeholderId': self.stakeholder_id,
+            'stakeholder':   stake_naam,
+            'categorie':     self.categorie or 'C',
+            'rings':         json.loads(self.rings) if self.rings else None,
         }
 
 
@@ -200,8 +221,26 @@ INITIELE_GEBRUIKERS = [
     {'username': 'stakeholder2', 'password': 'stake456',  'name': 'Sportpark Noord',     'role': 'stakeholder', 'initials': 'SN', 'label': 'Stakeholder',  'assigned_velden': json.dumps([8,9,10,11,12,13]),'contract_name': 'Sportpark Noord BV'},
 ]
 
+def _kolom_toevoegen_indien_nodig(tabel, kolom, sql_type):
+    """Lichte 'migratie': voegt een kolom toe aan een bestaande tabel als die nog
+       ontbreekt. db.create_all() raakt bestaande tabellen namelijk niet aan,
+       dus bij een upgrade van een oudere database moeten nieuwe kolommen
+       (zoals machinist_id/stakeholder_id) hier alsnog worden toegevoegd."""
+    insp = _sa_inspect(db.engine)
+    if not insp.has_table(tabel):
+        return
+    bestaande_kolommen = [c['name'] for c in insp.get_columns(tabel)]
+    if kolom not in bestaande_kolommen:
+        with db.engine.begin() as conn:
+            conn.execute(_sa_text(f'ALTER TABLE {tabel} ADD COLUMN {kolom} {sql_type}'))
+        print(f"Migratie: kolom '{kolom}' toegevoegd aan tabel '{tabel}'.")
+
+
 with app.app_context():
     db.create_all()
+    _kolom_toevoegen_indien_nodig('velden', 'machinist_id', 'INTEGER')
+    _kolom_toevoegen_indien_nodig('velden', 'stakeholder_id', 'INTEGER')
+
     # Seed gebruikers als de tabel leeg is
     if User.query.count() == 0:
         for u in INITIELE_GEBRUIKERS:
@@ -260,6 +299,29 @@ with app.app_context():
             db.session.delete(v)
         db.session.commit()
         print(f'{len(demo_velden)} demo-velden verwijderd.')
+
+    # Migratie: koppel bestaande machinist/stakeholder naam-strings aan user-ID's.
+    # Dit repareert oude toewijzingen die nog geen machinist_id/stakeholder_id
+    # hebben (bv. velden die zijn aangemaakt voordat deze kolommen bestonden).
+    alle_machinisten = User.query.filter_by(role='machinist').all()
+    alle_stakeholders = User.query.filter_by(role='stakeholder').all()
+    gekoppeld = 0
+    for veld in Veld.query.all():
+        if not veld.machinist_id and veld.machinist and veld.machinist != '—':
+            match = next((u for u in alle_machinisten if (u.name or '').strip().lower() == veld.machinist.strip().lower()), None)
+            if match:
+                veld.machinist_id = match.id
+                gekoppeld += 1
+        if not veld.stakeholder_id and veld.stakeholder and veld.stakeholder != '—':
+            match = next((u for u in alle_stakeholders if (u.contract_name or '').strip().lower() == veld.stakeholder.strip().lower()), None)
+            if not match:
+                match = next((u for u in alle_stakeholders if (u.name or '').strip().lower() == veld.stakeholder.strip().lower()), None)
+            if match:
+                veld.stakeholder_id = match.id
+                gekoppeld += 1
+    if gekoppeld:
+        db.session.commit()
+        print(f'Migratie: {gekoppeld} machinist/stakeholder-toewijzing(en) gekoppeld aan user-ID.')
 
     # Seed demo-metingen per veld als er nog geen metingen in de buurt zijn
     import random
@@ -369,7 +431,8 @@ def get_users():
     users = User.query.order_by(User.id).all()
     return jsonify([{
         'id': u.id, 'username': u.username,
-        'name': u.name, 'role': u.role, 'label': u.label
+        'name': u.name, 'role': u.role, 'label': u.label,
+        'contractName': u.contract_name,
     } for u in users])
 
 
@@ -487,6 +550,8 @@ def create_veld():
         prio       = data.get('prio', 'Laag'),
         machinist  = data.get('machinist', '—'),
         stakeholder = data.get('stakeholder', '—'),
+        machinist_id   = data.get('machinist_id'),
+        stakeholder_id = data.get('stakeholder_id'),
         categorie  = data.get('categorie', 'C'),
         rings      = json.dumps(data['rings']) if data.get('rings') else None,
     )
@@ -520,6 +585,8 @@ def bulk_velden():
             prio       = d.get('prio', 'Laag'),
             machinist  = d.get('machinist', '—'),
             stakeholder = d.get('stakeholder', '—'),
+            machinist_id   = d.get('machinist_id'),
+            stakeholder_id = d.get('stakeholder_id'),
             categorie  = d.get('categorie', 'C'),
             rings      = json.dumps(d['rings']) if d.get('rings') else None,
         )
@@ -537,10 +604,51 @@ def update_veld(veld_id):
     if not veld:
         return jsonify({'error': 'Niet gevonden'}), 404
     data = request.get_json()
-    for attr in ('naam', 'loc', 'lat', 'lng', 'hoogte', 'status', 'prio',
-                 'machinist', 'stakeholder', 'categorie'):
+    for attr in ('naam', 'loc', 'lat', 'lng', 'hoogte', 'status', 'prio', 'categorie'):
         if attr in data:
             setattr(veld, attr, data[attr])
+    # Toewijzing op user-ID is de bron van waarheid. De legacy naam-string wordt
+    # alleen nog meegeschreven als cache/fallback (bv. voor demo-herkenning).
+    if 'machinist_id' in data:
+        nieuwe_id = data['machinist_id'] or None
+        veld.machinist_id = nieuwe_id
+        if nieuwe_id:
+            u = db.session.get(User, nieuwe_id)
+            veld.machinist = (u.name or u.username) if u else '—'
+        else:
+            veld.machinist = '—'
+    elif 'machinist' in data:
+        # Oude clients die nog op naam toewijzen: zoek de bijbehorende user op
+        # zodat machinist_id ook meteen klopt.
+        veld.machinist = data['machinist']
+        if data['machinist'] and data['machinist'] != '—':
+            match = User.query.filter_by(role='machinist').filter(
+                db.func.lower(User.name) == data['machinist'].strip().lower()
+            ).first()
+            veld.machinist_id = match.id if match else veld.machinist_id
+        else:
+            veld.machinist_id = None
+    if 'stakeholder_id' in data:
+        nieuwe_id = data['stakeholder_id'] or None
+        veld.stakeholder_id = nieuwe_id
+        if nieuwe_id:
+            u = db.session.get(User, nieuwe_id)
+            veld.stakeholder = (u.contract_name or u.name or u.username) if u else '—'
+        else:
+            veld.stakeholder = '—'
+    elif 'stakeholder' in data:
+        veld.stakeholder = data['stakeholder']
+        if data['stakeholder'] and data['stakeholder'] != '—':
+            match = User.query.filter_by(role='stakeholder').filter(
+                db.func.lower(User.contract_name) == data['stakeholder'].strip().lower()
+            ).first()
+            if not match:
+                match = User.query.filter_by(role='stakeholder').filter(
+                    db.func.lower(User.name) == data['stakeholder'].strip().lower()
+                ).first()
+            veld.stakeholder_id = match.id if match else veld.stakeholder_id
+        else:
+            veld.stakeholder_id = None
     if 'rings' in data:
         veld.rings = json.dumps(data['rings']) if data['rings'] else None
     db.session.commit()

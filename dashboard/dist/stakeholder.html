@@ -733,16 +733,17 @@ function initMap(containerId, showAll) {
 function refreshMap(containerId, showAll) {
   const cached = mapViews[containerId];
   if (!cached) return;
+  if (showAll) { refreshShapeLayers(containerId); return; }
   require(['esri/Graphic','esri/layers/GraphicsLayer'],
     function(Graphic, GraphicsLayer) {
       cached.layer.removeAll();
-      const veldenToShow = showAll ? VELDEN : getRoute();
+      const veldenToShow = getRoute();
       veldenToShow.forEach((v, idx) => {
         const geom = maakPolygon(v.lat, v.lng, v.rings || null);
         cached.layer.add(new Graphic({
           geometry: geom,
           symbol: statusSymbol(v.status),
-          attributes: { ...v, routeNr: showAll ? '' : (idx+1) },
+          attributes: { ...v, routeNr: idx+1 },
           popupTemplate: {
             title:`{naam} — {loc}`,
             content:`<table class="esri-widget__table">
@@ -764,15 +765,15 @@ function refreshMap(containerId, showAll) {
 function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
 function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
 
-let MACHINISTEN  = ['—'];
-let STAKEHOLDERS = ['—'];
+let MACHINISTEN  = [{ id: null, naam: '—' }];
+let STAKEHOLDERS = [{ id: null, naam: '—' }];
 
 function laadGebruikersLijsten(callback) {
   fetch('/api/users', { credentials: 'same-origin' })
     .then(function(r){ return r.ok ? r.json() : []; })
     .then(function(users){
-      MACHINISTEN  = ['—'].concat(users.filter(function(u){ return u.role === 'machinist'; }).map(function(u){ return u.name; }));
-      STAKEHOLDERS = ['—'].concat(users.filter(function(u){ return u.role === 'stakeholder'; }).map(function(u){ return u.name; }));
+      MACHINISTEN  = [{ id: null, naam: '—' }].concat(users.filter(function(u){ return u.role === 'machinist'; }).map(function(u){ return { id: u.id, naam: u.name }; }));
+      STAKEHOLDERS = [{ id: null, naam: '—' }].concat(users.filter(function(u){ return u.role === 'stakeholder'; }).map(function(u){ return { id: u.id, naam: u.contractName || u.name }; }));
       if (callback) callback();
     })
     .catch(function(){ if (callback) callback(); });
@@ -795,10 +796,10 @@ function renderVelden(data){
   const CAT_KLEUREN = {A:'#1565c0',B:'#2e7d32',C:'#e65100',D:'#6a1b9a'};
   document.getElementById('v-tbody').innerHTML=data.map(v=>{
     const machSelect = `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
-        ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
+        ${MACHINISTEN.map(m=>`<option value="${m.id===null?'':m.id}" ${(v.machinistId||null)===m.id?'selected':''}>${m.naam}</option>`).join('')}
       </select>`;
     const stakeSelect = `<select class="form-select form-select-sm" style="min-width:160px" onchange="wijsStakeholderToe(${v.id},this.value)">
-        ${STAKEHOLDERS.map(s=>`<option ${v.stakeholder===s?'selected':''}>${s}</option>`).join('')}
+        ${STAKEHOLDERS.map(s=>`<option value="${s.id===null?'':s.id}" ${(v.stakeholderId||null)===s.id?'selected':''}>${s.naam}</option>`).join('')}
       </select>`;
     const huidigCat = veldCategorie(v.id);
     const catSelect = isAdmin
@@ -830,20 +831,26 @@ function slaVeldOpInDB(veldId, wijzigingen) {
   }).catch(() => {});
 }
 
-function wijsToe(veldId, machinist) {
+function wijsToe(veldId, machinistId) {
   const v = VELDEN.find(x => x.id === veldId);
   if (!v) return;
-  v.machinist = machinist;
-  slaVeldOpInDB(veldId, { machinist });
-  toonToast('✓ ' + v.naam + ' → Machinist: ' + machinist);
+  const id = machinistId === '' ? null : parseInt(machinistId, 10);
+  const m  = MACHINISTEN.find(x => x.id === id);
+  v.machinistId = id;
+  v.machinist   = m ? m.naam : '—';
+  slaVeldOpInDB(veldId, { machinist_id: id });
+  toonToast('✓ ' + v.naam + ' → Machinist: ' + v.machinist);
 }
 
-function wijsStakeholderToe(veldId, stakeholder) {
+function wijsStakeholderToe(veldId, stakeholderId) {
   const v = VELDEN.find(x => x.id === veldId);
   if (!v) return;
-  v.stakeholder = stakeholder;
-  slaVeldOpInDB(veldId, { stakeholder });
-  toonToast('✓ ' + v.naam + ' → Stakeholder: ' + stakeholder, '#1565c0');
+  const id = stakeholderId === '' ? null : parseInt(stakeholderId, 10);
+  const s  = STAKEHOLDERS.find(x => x.id === id);
+  v.stakeholderId = id;
+  v.stakeholder   = s ? s.naam : '—';
+  slaVeldOpInDB(veldId, { stakeholder_id: id });
+  toonToast('✓ ' + v.naam + ' → Stakeholder: ' + v.stakeholder, '#1565c0');
 }
 
 function filterVelden(){
@@ -868,7 +875,7 @@ function renderDashFields(){
    STAKEHOLDER VIEW
 ═══════════════════════════════════════ */
 function renderStakeholder(){
-  const myVelden=VELDEN.filter(v=>v.stakeholder===CU.contractName);
+  const myVelden=VELDEN.filter(v=>v.stakeholderId===CU.id);
   document.getElementById('stake-contract-name').textContent=CU.contractName||'';
 
   // Stat cards

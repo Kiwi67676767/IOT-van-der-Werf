@@ -333,9 +333,9 @@
 <!-- ══ ADMIN / DASHBOARD ══ -->
       <div id="page-dashboard" class="page">
         <div class="row g-3 mb-4">
-          <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-check2-circle"></i></div><div><div class="lbl">Gemaaid</div><div class="val">12</div><div class="sub">velden vandaag</div></div></div></div>
-          <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val">4</div><div class="sub">urgent</div></div></div></div>
-          <div class="col-6 col-md-3"><div class="sc o"><div class="ic"><i class="bi bi-hourglass-split"></i></div><div><div class="lbl">In uitvoering</div><div class="val">3</div><div class="sub">actieve machinisten</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc g"><div class="ic"><i class="bi bi-check2-circle"></i></div><div><div class="lbl">Gemaaid</div><div class="val" id="dash-gemaaid">—</div><div class="sub">velden vandaag</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc r"><div class="ic"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="lbl">Te hoog</div><div class="val" id="dash-tehoog">—</div><div class="sub">urgent</div></div></div></div>
+          <div class="col-6 col-md-3"><div class="sc o"><div class="ic"><i class="bi bi-hourglass-split"></i></div><div><div class="lbl">In uitvoering</div><div class="val" id="dash-inuitvoering">—</div><div class="sub">actieve machinisten</div></div></div></div>
           <div class="col-6 col-md-3"><div class="sc b" id="dash-naleving-card"><div class="ic"><i class="bi bi-shield-check"></i></div><div><div class="lbl">Contractnaleving</div><div class="val" id="dash-naleving">—</div><div class="sub">van alle velden OK</div></div></div></div>
         </div>
         <div class="row g-3">
@@ -353,10 +353,10 @@
             <div class="dc">
               <div class="dch"><i class="bi bi-bar-chart-fill" style="color:var(--g)"></i><h6>Doelstellingen</h6></div>
               <div class="dcb">
-                <div class="pg"><div class="pl"><span>Gemaaide velden</span><span><b>12</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:60%;background:var(--g)"></div></div></div>
-                <div class="pg"><div class="pl"><span>Gras te hoog (&gt;120mm)</span><span><b>4</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:20%;background:#f44336"></div></div></div>
-                <div class="pg"><div class="pl"><span>Gras op gewenste hoogte</span><span><b>9</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:45%;background:#4caf50"></div></div></div>
-                <div class="pg"><div class="pl"><span>Gras te laag (&lt;40mm)</span><span><b>3</b>/20</span></div><div class="progress"><div class="progress-bar" style="width:15%;background:#ff9800"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gemaaide velden</span><span><b id="pg-gemaaid">0</b>/<span id="pg-totaal-1">0</span></span></div><div class="progress"><div class="progress-bar" id="pg-bar-gemaaid" style="width:0%;background:var(--g)"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gras te hoog (&gt;120mm)</span><span><b id="pg-tehoog">0</b>/<span id="pg-totaal-2">0</span></span></div><div class="progress"><div class="progress-bar" id="pg-bar-tehoog" style="width:0%;background:#f44336"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gras op gewenste hoogte</span><span><b id="pg-ok">0</b>/<span id="pg-totaal-3">0</span></span></div><div class="progress"><div class="progress-bar" id="pg-bar-ok" style="width:0%;background:#4caf50"></div></div></div>
+                <div class="pg"><div class="pl"><span>Gras te laag (&lt;40mm)</span><span><b id="pg-telaag">0</b>/<span id="pg-totaal-4">0</span></span></div><div class="progress"><div class="progress-bar" id="pg-bar-telaag" style="width:0%;background:#ff9800"></div></div></div>
               </div>
             </div>
           </div>
@@ -977,6 +977,29 @@ function updateNalevingStat() {
   var kaart = el.closest('.sc');
   if (kaart) kaart.className = 'sc ' + (pct === null ? 'b' : pct >= 80 ? 'g' : pct >= 60 ? 'o' : 'r');
 }
+function updateDashboardKPIs() {
+  // Berekent de stat-cards en doelstellingen-balken live uit VELDEN, in plaats
+  // van de vaste/hardcoded cijfers die er origineel stonden. Zo klopt het
+  // hoofdscherm altijd met de werkelijke status van de velden.
+  var totaal      = VELDEN.length;
+  var gemaaid     = VELDEN.filter(function(v){ return v.status === 'Gemaaid'; }).length;
+  var tehoog      = VELDEN.filter(function(v){ return v.status === 'Hoog'; }).length;
+  var inuitvoer   = VELDEN.filter(function(v){ return v.status === 'In uitvoering'; }).length;
+  var ok          = VELDEN.filter(function(v){ return v.status === 'OK'; }).length;
+  var telaag      = VELDEN.filter(function(v){ return v.status === 'Te laag'; }).length;
+
+  function zet(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
+  function zetBar(id, val) { var el = document.getElementById(id); if (el) el.style.width = (totaal ? Math.round(val / totaal * 100) : 0) + '%'; }
+
+  zet('dash-gemaaid', gemaaid);
+  zet('dash-tehoog', tehoog);
+  zet('dash-inuitvoering', inuitvoer);
+
+  zet('pg-gemaaid', gemaaid); zet('pg-totaal-1', totaal); zetBar('pg-bar-gemaaid', gemaaid);
+  zet('pg-tehoog', tehoog);   zet('pg-totaal-2', totaal); zetBar('pg-bar-tehoog', tehoog);
+  zet('pg-ok', ok);           zet('pg-totaal-3', totaal); zetBar('pg-bar-ok', ok);
+  zet('pg-telaag', telaag);   zet('pg-totaal-4', totaal); zetBar('pg-bar-telaag', telaag);
+}
 function slaVeldCatOp(veldId, cat) {
   VELD_CAT[veldId] = cat;
   localStorage.setItem('veld_cat', JSON.stringify(VELD_CAT));
@@ -1292,6 +1315,7 @@ function actualiseerNaLaden() {
 }
 function actualiseerNaLadenIntern() {
   updateMeldingenBadge();
+  updateDashboardKPIs();
   vulDashVeldSelector();
   // Kaartbadge bijwerken
   document.querySelectorAll('.sb-badge').forEach(b => {
@@ -1404,16 +1428,18 @@ function initMap(containerId, showAll) {
 function refreshMap(containerId, showAll) {
   const cached = mapViews[containerId];
   if (!cached) return;
+  // Op de live kaart (showAll=true) tekenen we geen veld-overlays — alleen shapefiles
+  if (showAll) { refreshShapeLayers(containerId); return; }
   require(['esri/Graphic','esri/layers/GraphicsLayer'],
     function(Graphic, GraphicsLayer) {
       cached.layer.removeAll();
-      const veldenToShow = showAll ? VELDEN : getRoute();
+      const veldenToShow = getRoute();
       veldenToShow.forEach((v, idx) => {
         const geom = maakPolygon(v.lat, v.lng, v.rings || null);
         cached.layer.add(new Graphic({
           geometry: geom,
           symbol: statusSymbol(v.status),
-          attributes: { ...v, routeNr: showAll ? '' : (idx+1) },
+          attributes: { ...v, routeNr: idx+1 },
           popupTemplate: {
             title:`{naam} — {loc}`,
             content:`<table class="esri-widget__table">
@@ -1436,7 +1462,7 @@ function getRoute() {
   const prio = {Hoog:0,'Te laag':1,'In uitvoering':2,OK:3,Gemaaid:99};
   // Machinist ziet alleen zijn eigen toegewezen velden
   const basis = (CU && CU.role === 'machinist')
-    ? VELDEN.filter(v => v.machinist === CU.name)
+    ? VELDEN.filter(v => v.machinistId === CU.id)
     : VELDEN;
   return [...basis].sort((a,b) => (prio[a.status]??5) - (prio[b.status]??5));
 }
@@ -1523,15 +1549,17 @@ function toggleMeting() {
 function bsBadge(s){const m={Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'};return`<span class="bs ${m[s]||''}">${s}</span>`;}
 function prioBadge(p){const m={Hoog:'danger',Middel:'warning',Laag:'secondary'};return`<span class="badge text-bg-${m[p]||'secondary'}">${p}</span>`;}
 
-let MACHINISTEN  = ['—'];
-let STAKEHOLDERS = ['—'];
+// Lijsten van { id, naam } objecten — toewijzing gebeurt op user-ID, de naam
+// is alleen voor weergave. '—' (geen toewijzing) heeft id null.
+let MACHINISTEN  = [{ id: null, naam: '—' }];
+let STAKEHOLDERS = [{ id: null, naam: '—' }];
 
 function laadGebruikersLijsten(callback) {
   fetch('/api/users', { credentials: 'same-origin' })
     .then(function(r){ return r.ok ? r.json() : []; })
     .then(function(users){
-      MACHINISTEN  = ['—'].concat(users.filter(function(u){ return u.role === 'machinist'; }).map(function(u){ return u.name; }));
-      STAKEHOLDERS = ['—'].concat(users.filter(function(u){ return u.role === 'stakeholder'; }).map(function(u){ return u.name; }));
+      MACHINISTEN  = [{ id: null, naam: '—' }].concat(users.filter(function(u){ return u.role === 'machinist'; }).map(function(u){ return { id: u.id, naam: u.name }; }));
+      STAKEHOLDERS = [{ id: null, naam: '—' }].concat(users.filter(function(u){ return u.role === 'stakeholder'; }).map(function(u){ return { id: u.id, naam: u.contractName || u.name }; }));
       if (callback) callback();
     })
     .catch(function(){ if (callback) callback(); });
@@ -1554,10 +1582,10 @@ function renderVelden(data){
   const CAT_KLEUREN = {A:'#1565c0',B:'#2e7d32',C:'#e65100',D:'#6a1b9a'};
   document.getElementById('v-tbody').innerHTML=data.map(v=>{
     const machSelect = `<select class="form-select form-select-sm" style="min-width:130px" onchange="wijsToe(${v.id},this.value)">
-        ${MACHINISTEN.map(m=>`<option ${v.machinist===m?'selected':''}>${m}</option>`).join('')}
+        ${MACHINISTEN.map(m=>`<option value="${m.id===null?'':m.id}" ${(v.machinistId||null)===m.id?'selected':''}>${m.naam}</option>`).join('')}
       </select>`;
     const stakeSelect = `<select class="form-select form-select-sm" style="min-width:160px" onchange="wijsStakeholderToe(${v.id},this.value)">
-        ${STAKEHOLDERS.map(s=>`<option ${v.stakeholder===s?'selected':''}>${s}</option>`).join('')}
+        ${STAKEHOLDERS.map(s=>`<option value="${s.id===null?'':s.id}" ${(v.stakeholderId||null)===s.id?'selected':''}>${s.naam}</option>`).join('')}
       </select>`;
     const huidigCat = veldCategorie(v.id);
     const catSelect = isAdmin
@@ -1589,20 +1617,26 @@ function slaVeldOpInDB(veldId, wijzigingen) {
   }).catch(() => {});
 }
 
-function wijsToe(veldId, machinist) {
+function wijsToe(veldId, machinistId) {
   const v = VELDEN.find(x => x.id === veldId);
   if (!v) return;
-  v.machinist = machinist;
-  slaVeldOpInDB(veldId, { machinist });
-  toonToast('✓ ' + v.naam + ' → Machinist: ' + machinist);
+  const id = machinistId === '' ? null : parseInt(machinistId, 10);
+  const m  = MACHINISTEN.find(x => x.id === id);
+  v.machinistId = id;
+  v.machinist   = m ? m.naam : '—';
+  slaVeldOpInDB(veldId, { machinist_id: id });
+  toonToast('✓ ' + v.naam + ' → Machinist: ' + v.machinist);
 }
 
-function wijsStakeholderToe(veldId, stakeholder) {
+function wijsStakeholderToe(veldId, stakeholderId) {
   const v = VELDEN.find(x => x.id === veldId);
   if (!v) return;
-  v.stakeholder = stakeholder;
-  slaVeldOpInDB(veldId, { stakeholder });
-  toonToast('✓ ' + v.naam + ' → Stakeholder: ' + stakeholder, '#1565c0');
+  const id = stakeholderId === '' ? null : parseInt(stakeholderId, 10);
+  const s  = STAKEHOLDERS.find(x => x.id === id);
+  v.stakeholderId = id;
+  v.stakeholder   = s ? s.naam : '—';
+  slaVeldOpInDB(veldId, { stakeholder_id: id });
+  toonToast('✓ ' + v.naam + ' → Stakeholder: ' + v.stakeholder, '#1565c0');
 }
 
 function filterVelden(){
@@ -1644,7 +1678,7 @@ function renderDashFields(){
    STAKEHOLDER VIEW
 ═══════════════════════════════════════ */
 function renderStakeholder(){
-  const myVelden=VELDEN.filter(v=>v.stakeholder===CU.contractName);
+  const myVelden=VELDEN.filter(v=>v.stakeholderId===CU.id);
   document.getElementById('stake-contract-name').textContent=CU.contractName||'';
 
   // Stat cards
@@ -1759,7 +1793,7 @@ function filterTeam() {
     groep.forEach(u => {
       const initials = u.initials || (u.name || u.username).slice(0,2).toUpperCase();
       const toegewezenVeld = rol === 'machinist'
-        ? (VELDEN.find(v => v.machinist === u.name)?.naam || 'Geen veld toegewezen')
+        ? (VELDEN.find(v => v.machinistId === u.id)?.naam || 'Geen veld toegewezen')
         : (rol === 'stakeholder' ? (u.contractName || u.name || '—') : '—');
 
       html += `<div class="col-md-6">
