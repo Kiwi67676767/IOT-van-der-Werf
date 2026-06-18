@@ -342,10 +342,11 @@
                   <div id="big-s-label" style="font-size:.88rem;color:#374151;font-weight:600">Sensor inactief</div>
                   <div id="big-s-since" style="font-size:.75rem;color:#9ca3af;margin-top:.2rem"></div>
                 </div>
-                <button class="btn-meting" id="btn-meting" onclick="toggleMeting()">
-                  <i class="bi bi-play-fill" id="meting-icon"></i>
-                  <span id="meting-txt">Meting starten</span>
+                <button class="btn-meting active-meting d-none" id="btn-meting" onclick="stopMeting()">
+                  <i class="bi bi-stop-fill pulse"></i>
+                  <span>Meting stoppen</span>
                 </button>
+                <div id="meting-hint" style="font-size:.8rem;color:#9ca3af">Kies hiernaast een veld en klik op <strong>Start</strong> om te beginnen met meten.</div>
                 <div class="mt-3 p-3" style="background:#f9fafb;border:1px solid #f3f4f6;border-radius:12px;font-size:.8rem;color:#6b7280;text-align:left">
                   <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.3rem">Laatste meting</div>
                   <span id="last-meting" style="font-weight:500;color:#374151">Nog geen meting uitgevoerd</span>
@@ -539,10 +540,11 @@ const NAV = {
    STATE
 ═══════════════════════════════════════ */
 let CU = null;
-let metingActive = false;
-let metingInterval = null;
+let actieveVeldId = null;
+let metingPollInterval = null;
 let mapInit = { kaart: false, route: false };
 let chartsInit = false;
+let DISMISSED_MELDINGEN = new Set();
 
 /* ═══════════════════════════════════════
    LOGIN / LOGOUT
@@ -606,7 +608,7 @@ function showPage(page) {
 
   if(page==='kaart'&&!mapInit.kaart){initMap('arcgis-map',true);mapInit.kaart=true;}
   if(page==='route'&&!mapInit.route){initMap('arcgis-map-route',false);mapInit.route=true;buildRoute();}
-  if(page==='velden') renderVelden(VELDEN);
+  if(page==='velden') renderVelden(CU && CU.role==='machinist' ? VELDEN.filter(v=>v.machinistId===CU.id) : VELDEN);
   if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
 }
 
@@ -628,8 +630,12 @@ function initApp() {
   const hashPage = window.location.hash.replace('#','');
   const startPage = (hashPage && geldigePages.includes(hashPage)) ? hashPage : defaultPage;
 
-  if(CU.role==='machinist') document.getElementById('sensor-indicator').classList.remove('d-none');
-  else document.getElementById('sensor-indicator').classList.add('d-none');
+  if(CU.role==='machinist') {
+    document.getElementById('sensor-indicator').classList.remove('d-none');
+    laadMetingStatus();
+  } else {
+    document.getElementById('sensor-indicator').classList.add('d-none');
+  }
 
   renderDashFields();
   requestAnimationFrame(() => showPage(startPage));
@@ -683,7 +689,13 @@ async function laadVeldenVanOSM() {
 
 
 function actualiseerNaLaden() {
-  laadGebruikersLijsten(function(){ actualiseerNaLadenIntern(); });
+  laadGebruikersLijsten(function(){ laadDismissedMeldingen(function(){ actualiseerNaLadenIntern(); }); });
+}
+function laadDismissedMeldingen(callback) {
+  fetch('/api/meldingen/dismissed', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(keys){ DISMISSED_MELDINGEN = new Set(keys); if (callback) callback(); })
+    .catch(function(){ if (callback) callback(); });
 }
 function actualiseerNaLadenIntern() {
   updateMeldingenBadge();
@@ -699,7 +711,7 @@ function actualiseerNaLadenIntern() {
   if (CU) {
     renderDashFields();
     const actievePagina = document.querySelector('.page.active');
-    if (actievePagina?.id === 'page-velden')      renderVelden(VELDEN);
+    if (actievePagina?.id === 'page-velden')      renderVelden(CU && CU.role==='machinist' ? VELDEN.filter(v=>v.machinistId===CU.id) : VELDEN);
     if (actievePagina?.id === 'page-route')       buildRoute();
     if (actievePagina?.id === 'page-stakeholder') renderStakeholder();
   }
@@ -723,13 +735,13 @@ function maakPolygon(lat, lng, rings) {
 // Kleur op basis van maai-status
 function statusSymbol(status) {
   const cfg = {
-    'Hoog':          { fill:[244,67,54,18],   border:[220,30,20,255],   w:3   },
-    'Te laag':       { fill:[255,152,0,18],   border:[230,120,0,255],   w:2.5 },
-    'OK':            { fill:[76,175,80,18],   border:[40,130,45,255],   w:2.5 },
-    'In uitvoering': { fill:[33,150,243,18],  border:[20,100,200,255],  w:2.5 },
-    'Gemaaid':       { fill:[156,39,176,18],  border:[120,20,150,255],  w:2.5 },
+    'Hoog':          { fill:[244,67,54,70],   border:[220,30,20,255],   w:3.5 },
+    'Te laag':       { fill:[255,152,0,70],   border:[230,120,0,255],   w:3   },
+    'OK':            { fill:[76,175,80,70],   border:[40,130,45,255],   w:3   },
+    'In uitvoering': { fill:[33,150,243,70],  border:[20,100,200,255],  w:3   },
+    'Gemaaid':       { fill:[156,39,176,70],  border:[120,20,150,255],  w:3   },
   };
-  const c = cfg[status] || { fill:[120,120,120,15], border:[80,80,80,255], w:2 };
+  const c = cfg[status] || { fill:[120,120,120,60], border:[80,80,80,255], w:2.5 };
   return {
     type: 'simple-fill',
     color: c.fill,
@@ -758,25 +770,26 @@ function initMap(containerId, showAll) {
 
     const layer = new GraphicsLayer();
 
-    // Alleen op de routekaart (machinist) velden tekenen, niet op de live kaart
-    if (!showAll) {
-      const veldenToShow = getRoute();
-      veldenToShow.forEach((v, idx) => {
-        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
-        layer.add(new Graphic({
-          geometry: geom,
-          symbol: statusSymbol(v.status),
-          attributes: { ...v, routeNr: idx + 1 },
-          popupTemplate: {
-            title: `{naam} — {loc}`,
-            content: `<table class="esri-widget__table">
-              <tr><th>Status</th><td>{status}</td></tr>
-              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
-              <tr><th>Prioriteit</th><td>{prio}</td></tr>
-              <tr><th>Machinist</th><td>{machinist}</td></tr>
-            </table>`,
-          },
-        }));
+    // Op de overzichtskaart (/kaart) tonen we alle velden; op de routekaart
+    // (machinist) alleen de velden die aan deze machinist zijn toegewezen.
+    const veldenToShow = showAll ? VELDEN : getRoute();
+    veldenToShow.forEach((v, idx) => {
+      const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+      layer.add(new Graphic({
+        geometry: geom,
+        symbol: statusSymbol(v.status),
+        attributes: { ...v, routeNr: idx + 1 },
+        popupTemplate: {
+          title: `{naam} — {loc}`,
+          content: `<table class="esri-widget__table">
+            <tr><th>Status</th><td>{status}</td></tr>
+            <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+            <tr><th>Prioriteit</th><td>{prio}</td></tr>
+            <tr><th>Machinist</th><td>{machinist}</td></tr>
+          </table>`,
+        },
+      }));
+      if (!showAll) {
         layer.add(new Graphic({
           geometry: { type:'point', longitude: v.lng, latitude: v.lat },
           symbol: {
@@ -784,8 +797,8 @@ function initMap(containerId, showAll) {
             text: String(idx + 1), font:{ size:10, weight:'bold' },
           },
         }));
-      });
-    }
+      }
+    });
 
     map.add(layer);
     mapViews[containerId].layer = layer;
@@ -799,11 +812,10 @@ function initMap(containerId, showAll) {
 function refreshMap(containerId, showAll) {
   const cached = mapViews[containerId];
   if (!cached) return;
-  if (showAll) { refreshShapeLayers(containerId); return; }
   require(['esri/Graphic','esri/layers/GraphicsLayer'],
     function(Graphic, GraphicsLayer) {
       cached.layer.removeAll();
-      const veldenToShow = getRoute();
+      const veldenToShow = showAll ? VELDEN : getRoute();
       veldenToShow.forEach((v, idx) => {
         const geom = maakPolygon(v.lat, v.lng, v.rings || null);
         cached.layer.add(new Graphic({
@@ -820,9 +832,19 @@ function refreshMap(containerId, showAll) {
             </table>`,
           },
         }));
+        if (!showAll) {
+          cached.layer.add(new Graphic({
+            geometry: { type:'point', longitude: v.lng, latitude: v.lat },
+            symbol: {
+              type:'text', color:[255,255,255], haloColor:[0,0,0], haloSize:1.5,
+              text: String(idx + 1), font:{ size:10, weight:'bold' },
+            },
+          }));
+        }
       });
     }
   );
+  if (showAll) refreshShapeLayers(containerId);
 }
 
 /* ═══════════════════════════════════════
@@ -851,13 +873,18 @@ function buildRoute() {
     const numClass = done?'done':(urgent?'urgent':(medium?'medium':''));
     const bsClass  = {Hoog:'bsh','Te laag':'bsl',OK:'bsok','In uitvoering':'bsb',Gemaaid:'bsgm'}[v.status]||'';
     const hColor   = v.hoogte>120?'#f44336':(v.hoogte<40?'#ff9800':'#2e7d32');
+    const isActief = actieveVeldId === v.id;
+    const metingBtn = isActief
+      ? `<button class="btn btn-sm" style="background:#f44336;color:#fff;border:none;border-radius:8px;font-size:.76rem;font-weight:600;padding:.35rem .7rem;white-space:nowrap" onclick="stopMeting()"><i class="bi bi-stop-fill me-1"></i>Stop</button>`
+      : `<button class="btn btn-sm" style="background:var(--g);color:#fff;border:none;border-radius:8px;font-size:.76rem;font-weight:600;padding:.35rem .7rem;white-space:nowrap" onclick="startMetingVoorVeld(${v.id})"><i class="bi bi-play-fill me-1"></i>Start</button>`;
     return `<div class="route-item">
       <div class="route-num ${numClass}">${i+1}</div>
       <div class="route-info">
-        <div class="route-name">${v.naam} &mdash; ${v.loc}</div>
+        <div class="route-name">${v.naam} &mdash; ${v.loc} ${isActief?'<span class="bs bsb ms-1"><i class="bi bi-broadcast"></i> meet nu</span>':''}</div>
         <div class="route-sub">${v.lat.toFixed(4)}°N, ${v.lng.toFixed(4)}°O &nbsp;|&nbsp; <span class="bs ${bsClass}">${v.status}</span></div>
       </div>
       <div class="route-hoogte" style="color:${hColor}">${v.hoogte}<span style="font-size:.75rem;font-weight:400">mm</span></div>
+      ${metingBtn}
     </div>`;
   }).join('');
 }
@@ -872,45 +899,106 @@ function openGoogleMaps() {
 }
 
 /* ═══════════════════════════════════════
-   SENSOR / METING
+   SENSOR / METING — echte koppeling met de Pico via de server
+   (geen nep-waarden meer; de Pico meet pas zodra wij /api/meting/start
+   aanroepen, en stopt weer zodra wij /api/meting/stop aanroepen)
 ═══════════════════════════════════════ */
-function toggleMeting() {
-  metingActive = !metingActive;
-  const btn=document.getElementById('btn-meting');
-  const ico=document.getElementById('meting-icon');
-  const txt=document.getElementById('meting-txt');
-  const dot=document.getElementById('big-s-dot');
-  const lbl=document.getElementById('big-s-label');
-  const since=document.getElementById('big-s-since');
-  const sdot=document.getElementById('s-dot');
-  const slbl=document.getElementById('s-label');
+function laadMetingStatus() {
+  fetch('/api/meting/status', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null)
+    .then(st => {
+      if (!st) return;
+      actieveVeldId = st.veldId || null;
+      updateMetingUI();
+      if (actieveVeldId) startMetingPolling();
+    })
+    .catch(() => {});
+}
 
-  if(metingActive){
-    btn.classList.add('active-meting');
-    ico.className='bi bi-stop-fill pulse';
-    txt.textContent='Meting stoppen';
-    dot.className='sensor-dot on'; dot.style.cssText='width:14px;height:14px';
-    lbl.textContent='Sensor actief — meting loopt';
-    since.textContent='Gestart om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-    sdot.className='sensor-dot on';
-    slbl.textContent='Sensor actief';
-    document.getElementById('last-meting').textContent='Meting gestart om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    // Simuleer live metingen
-    metingInterval=setInterval(()=>{
-      const h=Math.round(60+Math.random()*80);
-      document.getElementById('last-meting').textContent=`Laatste waarde: ${h} mm (${new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})})`;
-    },3000);
+function updateMetingUI() {
+  const dot   = document.getElementById('big-s-dot');
+  const lbl   = document.getElementById('big-s-label');
+  const sdot  = document.getElementById('s-dot');
+  const slbl  = document.getElementById('s-label');
+  const btn   = document.getElementById('btn-meting');
+  const hint  = document.getElementById('meting-hint');
+  const veld  = actieveVeldId ? VELDEN.find(v => v.id === actieveVeldId) : null;
+
+  if (veld) {
+    dot.className = 'sensor-dot on pulse'; dot.style.cssText = 'width:14px;height:14px';
+    lbl.textContent = 'Sensor actief — ' + veld.naam;
+    sdot.className = 'sensor-dot on';
+    slbl.textContent = 'Sensor actief';
+    btn.classList.remove('d-none');
+    if (hint) hint.classList.add('d-none');
   } else {
-    btn.classList.remove('active-meting');
-    ico.className='bi bi-play-fill';
-    txt.textContent='Meting starten';
-    dot.className='sensor-dot off'; dot.style.cssText='width:14px;height:14px';
-    lbl.textContent='Sensor inactief';
-    since.textContent='';
-    sdot.className='sensor-dot off';
-    slbl.textContent='Sensor inactief';
-    clearInterval(metingInterval); metingInterval=null;
+    dot.className = 'sensor-dot off'; dot.style.cssText = 'width:14px;height:14px';
+    lbl.textContent = 'Sensor inactief';
+    document.getElementById('big-s-since').textContent = '';
+    sdot.className = 'sensor-dot off';
+    slbl.textContent = 'Sensor inactief';
+    btn.classList.add('d-none');
+    if (hint) hint.classList.remove('d-none');
   }
+  // Knoppen in de routelijst bijwerken (Start/Stop per veld)
+  if (document.getElementById('page-route')?.classList.contains('active')) buildRoute();
+}
+
+function startMetingVoorVeld(veldId) {
+  fetch('/api/meting/start', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ veld_id: veldId }),
+  })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      if (!ok) { toonToast(d.error || 'Kan meting niet starten', '#dc3545'); return; }
+      actieveVeldId = veldId;
+      document.getElementById('big-s-since').textContent = 'Gestart om ' + new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('last-meting').textContent = 'Wachten op eerste meting van de sensor…';
+      updateMetingUI();
+      startMetingPolling();
+      const veld = VELDEN.find(v => v.id === veldId);
+      toonToast('✓ Meting gestart voor ' + (veld ? veld.naam : 'veld'));
+    })
+    .catch(() => toonToast('Verbindingsfout bij starten meting', '#dc3545'));
+}
+
+function stopMeting() {
+  fetch('/api/meting/stop', { method: 'POST', credentials: 'same-origin' })
+    .then(() => {
+      actieveVeldId = null;
+      stopMetingPolling();
+      updateMetingUI();
+      toonToast('Meting gestopt');
+    })
+    .catch(() => toonToast('Verbindingsfout bij stoppen meting', '#dc3545'));
+}
+
+function startMetingPolling() {
+  if (metingPollInterval) return;
+  pollLaatsteMeting();
+  metingPollInterval = setInterval(pollLaatsteMeting, 8000);
+}
+function stopMetingPolling() {
+  clearInterval(metingPollInterval);
+  metingPollInterval = null;
+  document.getElementById('last-meting').textContent = 'Nog geen meting uitgevoerd';
+}
+function pollLaatsteMeting() {
+  if (!actieveVeldId) return;
+  fetch('/api/metingen?veld_id=' + actieveVeldId, { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : [])
+    .then(rijen => {
+      if (!rijen.length) {
+        document.getElementById('last-meting').textContent = 'Wachten op eerste meting van de sensor…';
+        return;
+      }
+      const laatste = rijen[0]; // server sorteert al op timestamp aflopend
+      const tijd = new Date(laatste.timestamp).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      document.getElementById('last-meting').textContent = 'Laatste waarde: ' + laatste.gras_hoogte_cm + ' cm (' + tijd + ')';
+    })
+    .catch(() => {});
 }
 
 /* ═══════════════════════════════════════
@@ -1010,7 +1098,8 @@ function wijsStakeholderToe(veldId, stakeholderId) {
 function filterVelden(){
   const q=document.getElementById('v-search').value.toLowerCase();
   const s=document.getElementById('v-filter').value;
-  renderVelden(VELDEN.filter(v=>(v.naam.toLowerCase().includes(q)||v.loc.toLowerCase().includes(q))&&(!s||v.status===s)));
+  const basis = (CU && CU.role==='machinist') ? VELDEN.filter(v=>v.machinistId===CU.id) : VELDEN;
+  renderVelden(basis.filter(v=>(v.naam.toLowerCase().includes(q)||v.loc.toLowerCase().includes(q))&&(!s||v.status===s)));
 }
 
 /* dashboard quick list */
@@ -1046,20 +1135,32 @@ function laadNotifPrefs() {
 function berekenMeldingen() {
   const prefs = laadNotifPrefs();
   const meldingen = [];
-  VELDEN.forEach(function(v) {
+  // Een machinist krijgt alleen meldingen over zijn eigen toegewezen velden
+  const basis = (CU && CU.role === 'machinist') ? VELDEN.filter(v => v.machinistId === CU.id) : VELDEN;
+  basis.forEach(function(v) {
     const cat = veldCategorie(v.id);
     const inst = CAT_INST[cat] || CAT_INST['C'];
     if (prefs.n1 && v.hoogte > inst.max) {
-      meldingen.push({ type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
+      meldingen.push({ key:'hoog-'+v.id, type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
     }
     if (prefs.n2 && v.hoogte < inst.min && v.hoogte > 0) {
-      meldingen.push({ type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
+      meldingen.push({ key:'laag-'+v.id, type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
     }
     if (prefs.n3 && v.status === 'Gemaaid') {
-      meldingen.push({ type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
+      meldingen.push({ key:'klaar-'+v.id, type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
     }
   });
-  return meldingen;
+  return meldingen.filter(function(m){ return !DISMISSED_MELDINGEN.has(m.key); });
+}
+function verbergMelding(key) {
+  DISMISSED_MELDINGEN.add(key);
+  fetch('/api/meldingen/dismiss', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: key }),
+  }).catch(function(){});
+  renderNotifDropdownList();
+  updateMeldingenBadge();
 }
 function updateMeldingenBadge() {
   const badge = document.getElementById('notif-badge');
@@ -1084,25 +1185,24 @@ function toggleNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');
   if (!dd) return;
   if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  renderNotifDropdownList();
+  dd.classList.add('open');
+}
+function renderNotifDropdownList() {
   const meldingen = berekenMeldingen();
   const list = document.getElementById('notif-list');
+  if (!list) return;
   if (meldingen.length === 0) {
     list.innerHTML = '<div class="notif-empty"><i class="bi bi-check-circle" style="font-size:1.5rem;color:#2e7d32"></i><br>Geen actieve meldingen</div>';
-  } else {
-    list.innerHTML = meldingen.map(function(m, i) {
-      return `<div class="notif-item" style="cursor:pointer" onclick="sluitNotifDropdown();showPage('notificaties')">
-        <span class="ni-icon">${m.icon}</span>
-        <span style="flex:1">${m.tekst}</span>
-        <i class="bi bi-chevron-right" style="color:#adb5bd;font-size:.75rem;flex-shrink:0"></i>
-      </div>`;
-    }).join('');
-    list.innerHTML += `<div style="padding:.6rem 1rem;text-align:center;border-top:1px solid #f0f0f0">
-      <button onclick="sluitNotifDropdown();showPage('notificaties')" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer">
-        Alle meldingen bekijken <i class="bi bi-arrow-right ms-1"></i>
-      </button>
-    </div>`;
+    return;
   }
-  dd.classList.add('open');
+  list.innerHTML = meldingen.map(function(m) {
+    return `<div class="notif-item">
+      <span class="ni-icon">${m.icon}</span>
+      <span style="flex:1">${m.tekst}</span>
+      <button onclick="verbergMelding('${m.key}')" title="Melding wegklikken" style="background:none;border:none;color:#adb5bd;font-size:.85rem;cursor:pointer;padding:0;flex-shrink:0"><i class="bi bi-x-lg"></i></button>
+    </div>`;
+  }).join('');
 }
 function sluitNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');

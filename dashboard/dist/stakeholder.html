@@ -390,6 +390,7 @@ let ARCGIS_KEY = ''; // geladen via /api/config na login
 
 // Grasvelden — dynamisch geladen vanuit OpenStreetMap (Overpass API)
 let VELDEN = [];
+let DISMISSED_MELDINGEN = new Set();
 
 /* ── CONTRACTCATEGORIE STATE ── */
 const CAT_DEFAULTS = {
@@ -617,7 +618,13 @@ async function laadVeldenVanOSM() {
 
 
 function actualiseerNaLaden() {
-  laadGebruikersLijsten(function(){ actualiseerNaLadenIntern(); });
+  laadGebruikersLijsten(function(){ laadDismissedMeldingen(function(){ actualiseerNaLadenIntern(); }); });
+}
+function laadDismissedMeldingen(callback) {
+  fetch('/api/meldingen/dismissed', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(keys){ DISMISSED_MELDINGEN = new Set(keys); if (callback) callback(); })
+    .catch(function(){ if (callback) callback(); });
 }
 function actualiseerNaLadenIntern() {
   updateMeldingenBadge();
@@ -657,13 +664,13 @@ function maakPolygon(lat, lng, rings) {
 // Kleur op basis van maai-status
 function statusSymbol(status) {
   const cfg = {
-    'Hoog':          { fill:[244,67,54,18],   border:[220,30,20,255],   w:3   },
-    'Te laag':       { fill:[255,152,0,18],   border:[230,120,0,255],   w:2.5 },
-    'OK':            { fill:[76,175,80,18],   border:[40,130,45,255],   w:2.5 },
-    'In uitvoering': { fill:[33,150,243,18],  border:[20,100,200,255],  w:2.5 },
-    'Gemaaid':       { fill:[156,39,176,18],  border:[120,20,150,255],  w:2.5 },
+    'Hoog':          { fill:[244,67,54,65],   border:[220,30,20,255],   w:3.5 },
+    'Te laag':       { fill:[255,152,0,65],   border:[230,120,0,255],   w:3   },
+    'OK':            { fill:[76,175,80,65],   border:[40,130,45,255],   w:3   },
+    'In uitvoering': { fill:[33,150,243,65],  border:[20,100,200,255],  w:3   },
+    'Gemaaid':       { fill:[156,39,176,65],  border:[120,20,150,255],  w:3   },
   };
-  const c = cfg[status] || { fill:[120,120,120,15], border:[80,80,80,255], w:2 };
+  const c = cfg[status] || { fill:[120,120,120,60], border:[80,80,80,255], w:3 };
   return {
     type: 'simple-fill',
     color: c.fill,
@@ -692,34 +699,25 @@ function initMap(containerId, showAll) {
 
     const layer = new GraphicsLayer();
 
-    // Alleen op de routekaart (machinist) velden tekenen, niet op de live kaart
-    if (!showAll) {
-      const veldenToShow = getRoute();
-      veldenToShow.forEach((v, idx) => {
-        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
-        layer.add(new Graphic({
-          geometry: geom,
-          symbol: statusSymbol(v.status),
-          attributes: { ...v, routeNr: idx + 1 },
-          popupTemplate: {
-            title: `{naam} — {loc}`,
-            content: `<table class="esri-widget__table">
-              <tr><th>Status</th><td>{status}</td></tr>
-              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
-              <tr><th>Prioriteit</th><td>{prio}</td></tr>
-              <tr><th>Machinist</th><td>{machinist}</td></tr>
-            </table>`,
-          },
-        }));
-        layer.add(new Graphic({
-          geometry: { type:'point', longitude: v.lng, latitude: v.lat },
-          symbol: {
-            type:'text', color:[255,255,255], haloColor:[0,0,0], haloSize:1.5,
-            text: String(idx + 1), font:{ size:10, weight:'bold' },
-          },
-        }));
-      });
-    }
+    // Op /kaart tonen we alleen de velden van déze stakeholder (eigen contract)
+    const veldenToShow = showAll ? VELDEN.filter(v => v.stakeholderId === CU.id) : [];
+    veldenToShow.forEach((v, idx) => {
+      const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+      layer.add(new Graphic({
+        geometry: geom,
+        symbol: statusSymbol(v.status),
+        attributes: { ...v, routeNr: idx + 1 },
+        popupTemplate: {
+          title: `{naam} — {loc}`,
+          content: `<table class="esri-widget__table">
+            <tr><th>Status</th><td>{status}</td></tr>
+            <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+            <tr><th>Prioriteit</th><td>{prio}</td></tr>
+            <tr><th>Machinist</th><td>{machinist}</td></tr>
+          </table>`,
+        },
+      }));
+    });
 
     map.add(layer);
     mapViews[containerId].layer = layer;
@@ -733,11 +731,10 @@ function initMap(containerId, showAll) {
 function refreshMap(containerId, showAll) {
   const cached = mapViews[containerId];
   if (!cached) return;
-  if (showAll) { refreshShapeLayers(containerId); return; }
   require(['esri/Graphic','esri/layers/GraphicsLayer'],
     function(Graphic, GraphicsLayer) {
       cached.layer.removeAll();
-      const veldenToShow = getRoute();
+      const veldenToShow = showAll ? VELDEN.filter(v => v.stakeholderId === CU.id) : [];
       veldenToShow.forEach((v, idx) => {
         const geom = maakPolygon(v.lat, v.lng, v.rings || null);
         cached.layer.add(new Graphic({
@@ -755,6 +752,7 @@ function refreshMap(containerId, showAll) {
           },
         }));
       });
+      if (showAll) refreshShapeLayers(containerId);
     }
   );
 }
@@ -937,20 +935,32 @@ function laadNotifPrefs() {
 function berekenMeldingen() {
   const prefs = laadNotifPrefs();
   const meldingen = [];
-  VELDEN.forEach(function(v) {
+  // Een stakeholder krijgt alleen meldingen over zijn eigen (gecontracteerde) velden
+  const basis = VELDEN.filter(v => v.stakeholderId === CU.id);
+  basis.forEach(function(v) {
     const cat = veldCategorie(v.id);
     const inst = CAT_INST[cat] || CAT_INST['C'];
     if (prefs.n1 && v.hoogte > inst.max) {
-      meldingen.push({ type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
+      meldingen.push({ key:'hoog-'+v.id, type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
     }
     if (prefs.n2 && v.hoogte < inst.min && v.hoogte > 0) {
-      meldingen.push({ type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
+      meldingen.push({ key:'laag-'+v.id, type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
     }
     if (prefs.n3 && v.status === 'Gemaaid') {
-      meldingen.push({ type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
+      meldingen.push({ key:'klaar-'+v.id, type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
     }
   });
-  return meldingen;
+  return meldingen.filter(function(m){ return !DISMISSED_MELDINGEN.has(m.key); });
+}
+function verbergMelding(key) {
+  DISMISSED_MELDINGEN.add(key);
+  fetch('/api/meldingen/dismiss', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: key }),
+  }).catch(function(){});
+  renderNotifDropdownList();
+  updateMeldingenBadge();
 }
 function updateMeldingenBadge() {
   const badge = document.getElementById('notif-badge');
@@ -975,25 +985,24 @@ function toggleNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');
   if (!dd) return;
   if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  renderNotifDropdownList();
+  dd.classList.add('open');
+}
+function renderNotifDropdownList() {
   const meldingen = berekenMeldingen();
   const list = document.getElementById('notif-list');
+  if (!list) return;
   if (meldingen.length === 0) {
     list.innerHTML = '<div class="notif-empty"><i class="bi bi-check-circle" style="font-size:1.5rem;color:#2e7d32"></i><br>Geen actieve meldingen</div>';
-  } else {
-    list.innerHTML = meldingen.map(function(m, i) {
-      return `<div class="notif-item" style="cursor:pointer" onclick="sluitNotifDropdown();showPage('notificaties')">
-        <span class="ni-icon">${m.icon}</span>
-        <span style="flex:1">${m.tekst}</span>
-        <i class="bi bi-chevron-right" style="color:#adb5bd;font-size:.75rem;flex-shrink:0"></i>
-      </div>`;
-    }).join('');
-    list.innerHTML += `<div style="padding:.6rem 1rem;text-align:center;border-top:1px solid #f0f0f0">
-      <button onclick="sluitNotifDropdown();showPage('notificaties')" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer">
-        Alle meldingen bekijken <i class="bi bi-arrow-right ms-1"></i>
-      </button>
-    </div>`;
+    return;
   }
-  dd.classList.add('open');
+  list.innerHTML = meldingen.map(function(m) {
+    return `<div class="notif-item">
+      <span class="ni-icon">${m.icon}</span>
+      <span style="flex:1">${m.tekst}</span>
+      <button onclick="verbergMelding('${m.key}')" title="Melding wegklikken" style="background:none;border:none;color:#adb5bd;font-size:.85rem;cursor:pointer;padding:0;flex-shrink:0"><i class="bi bi-x-lg"></i></button>
+    </div>`;
+  }).join('');
 }
 function sluitNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');

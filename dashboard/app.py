@@ -59,6 +59,8 @@ class User(db.Model):
     label         = db.Column(db.String(50))
     assigned_velden = db.Column(db.Text)       # JSON array met veld-ids
     contract_name   = db.Column(db.String(100))
+    device_id       = db.Column(db.String(50))   # Pico-ID van de gekoppelde sensor (alleen machinist)
+    actieve_veld_id = db.Column(db.Integer, db.ForeignKey('velden.id'), nullable=True)  # veld waarvoor nu gemeten wordt
 
     def to_dict(self):
         return {
@@ -70,6 +72,8 @@ class User(db.Model):
             'label':           self.label,
             'assignedVelden':  json.loads(self.assigned_velden) if self.assigned_velden else None,
             'contractName':    self.contract_name,
+            'deviceId':        self.device_id,
+            'actieveVeldId':   self.actieve_veld_id,
         }
 
 
@@ -151,6 +155,7 @@ class Meting(db.Model):
     gras_hoogte_cm = db.Column(db.Float)
     latitude      = db.Column(db.Float)
     longitude     = db.Column(db.Float)
+    veld_id       = db.Column(db.Integer, db.ForeignKey('velden.id'), nullable=True)
     timestamp     = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -160,6 +165,7 @@ class Meting(db.Model):
             'gras_hoogte_cm': self.gras_hoogte_cm,
             'latitude':      self.latitude,
             'longitude':     self.longitude,
+            'veldId':        self.veld_id,
             'timestamp':     self.timestamp.isoformat()
         }
 
@@ -182,43 +188,24 @@ class ActivityLog(db.Model):
         }
 
 
-# ── SENSOR HELPER ──
-
-def _seed_sensor_voor_machinist(username):
-    """Maak 30 dagen aan demo-metingen voor een nieuw machinist-device."""
-    import random
-    import datetime as dt
-    device_id = 'sensor-' + username
-    if Meting.query.filter_by(device_id=device_id).first():
-        return
-    now = datetime.utcnow()
-    for dag in range(29, -1, -1):
-        ts = (now - dt.timedelta(days=dag)).replace(
-            hour=random.randint(7, 16),
-            minute=random.randint(0, 59),
-            second=0, microsecond=0
-        )
-        fase = dag % 14
-        hoogte = round(max(1.0, 5.0 + (7.0 * fase / 14) + random.gauss(0, 0.6)), 1)
-        db.session.add(Meting(
-            device_id=device_id,
-            gras_hoogte_cm=hoogte,
-            latitude=53.2194 + random.uniform(-0.02, 0.02),
-            longitude=6.5665 + random.uniform(-0.02, 0.02),
-            timestamp=ts,
-        ))
-    db.session.commit()
-    print(f'Sensor aangemaakt voor machinist: {device_id}')
+class MeldingDismiss(db.Model):
+    """Onthoudt welke melding (per stabiele 'key') een gebruiker heeft weggeklikt,
+       zodat weggeklikte meldingen niet steeds terugkomen."""
+    __tablename__ = 'melding_dismiss'
+    id        = db.Column(db.Integer, primary_key=True)
+    user_id   = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    key       = db.Column(db.String(150), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ── STARTUP ──
 
 INITIELE_GEBRUIKERS = [
-    {'username': 'admin',        'password': 'admin789',  'name': 'Beheerder',          'role': 'admin',       'initials': 'AD', 'label': 'Beheerder',    'assigned_velden': None,                         'contract_name': None},
-    {'username': 'machinist1',   'password': 'groen123',  'name': 'Machinist 1',         'role': 'machinist',   'initials': 'M1', 'label': 'Machinist',    'assigned_velden': None,                         'contract_name': None},
-    {'username': 'machinist2',   'password': 'groen456',  'name': 'Machinist 2',         'role': 'machinist',   'initials': 'M2', 'label': 'Machinist',    'assigned_velden': None,                         'contract_name': None},
-    {'username': 'stakeholder1', 'password': 'stake123',  'name': 'Gemeente Amsterdam',  'role': 'stakeholder', 'initials': 'GA', 'label': 'Stakeholder',  'assigned_velden': json.dumps([1,2,3,4,5,6,7]),  'contract_name': 'Gemeente Amsterdam'},
-    {'username': 'stakeholder2', 'password': 'stake456',  'name': 'Sportpark Noord',     'role': 'stakeholder', 'initials': 'SN', 'label': 'Stakeholder',  'assigned_velden': json.dumps([8,9,10,11,12,13]),'contract_name': 'Sportpark Noord BV'},
+    {'username': 'admin',        'password': 'admin789',  'name': 'Beheerder',          'role': 'admin',       'initials': 'AD', 'label': 'Beheerder',    'assigned_velden': None,                         'contract_name': None,                'device_id': None},
+    {'username': 'machinist1',   'password': 'groen123',  'name': 'Machinist 1',         'role': 'machinist',   'initials': 'M1', 'label': 'Machinist',    'assigned_velden': None,                         'contract_name': None,                'device_id': 'maaier_01'},
+    {'username': 'machinist2',   'password': 'groen456',  'name': 'Machinist 2',         'role': 'machinist',   'initials': 'M2', 'label': 'Machinist',    'assigned_velden': None,                         'contract_name': None,                'device_id': None},
+    {'username': 'stakeholder1', 'password': 'stake123',  'name': 'Gemeente Amsterdam',  'role': 'stakeholder', 'initials': 'GA', 'label': 'Stakeholder',  'assigned_velden': json.dumps([1,2,3,4,5,6,7]),  'contract_name': 'Gemeente Amsterdam', 'device_id': None},
+    {'username': 'stakeholder2', 'password': 'stake456',  'name': 'Sportpark Noord',     'role': 'stakeholder', 'initials': 'SN', 'label': 'Stakeholder',  'assigned_velden': json.dumps([8,9,10,11,12,13]),'contract_name': 'Sportpark Noord BV', 'device_id': None},
 ]
 
 def _kolom_toevoegen_indien_nodig(tabel, kolom, sql_type):
@@ -240,6 +227,9 @@ with app.app_context():
     db.create_all()
     _kolom_toevoegen_indien_nodig('velden', 'machinist_id', 'INTEGER')
     _kolom_toevoegen_indien_nodig('velden', 'stakeholder_id', 'INTEGER')
+    _kolom_toevoegen_indien_nodig('users', 'device_id', 'VARCHAR(50)')
+    _kolom_toevoegen_indien_nodig('users', 'actieve_veld_id', 'INTEGER')
+    _kolom_toevoegen_indien_nodig('metingen', 'veld_id', 'INTEGER')
 
     # Seed gebruikers als de tabel leeg is
     if User.query.count() == 0:
@@ -253,13 +243,10 @@ with app.app_context():
                 label         = u['label'],
                 assigned_velden = u['assigned_velden'],
                 contract_name   = u['contract_name'],
+                device_id       = u.get('device_id'),
             ))
         db.session.commit()
         print("Gebruikers aangemaakt in database.")
-        # Seed sensoren voor de initiele machinisten
-        for u in INITIELE_GEBRUIKERS:
-            if u['role'] == 'machinist':
-                _seed_sensor_voor_machinist(u['username'])
     else:
         # Migratie: fix alleen hashes die leeg of aantoonbaar corrupt zijn
         # (NIET resetten als het wachtwoord gewoon gewijzigd is door de gebruiker)
@@ -323,45 +310,29 @@ with app.app_context():
         db.session.commit()
         print(f'Migratie: {gekoppeld} machinist/stakeholder-toewijzing(en) gekoppeld aan user-ID.')
 
-    # Seed demo-metingen per veld als er nog geen metingen in de buurt zijn
-    import random
-    import datetime as dt
-    velden_seed = Veld.query.all()
-    MAX_DIST_SEED = 0.05
-    cat_target_seed = {'A': 4.0, 'B': 7.0, 'C': 9.0, 'D': 14.0}
-    geseeded = 0
-    for veld in velden_seed:
-        if not veld.lat or not veld.lng:
+    # Migratie: koppel de standaard device-ID's uit INITIELE_GEBRUIKERS aan bestaande
+    # accounts die nog geen device_id hebben (voor databases die al bestonden
+    # voordat dit veld werd toegevoegd).
+    device_aangepast = 0
+    for u in INITIELE_GEBRUIKERS:
+        if not u.get('device_id'):
             continue
-        heeft_metingen = Meting.query.filter(
-            Meting.latitude.between(veld.lat - MAX_DIST_SEED, veld.lat + MAX_DIST_SEED),
-            Meting.longitude.between(veld.lng - MAX_DIST_SEED, veld.lng + MAX_DIST_SEED)
-        ).first()
-        if heeft_metingen:
-            continue
-        now = datetime.utcnow()
-        target_cm = cat_target_seed.get(veld.categorie or 'C', 9.0)
-        device_id = 'sensor-{:03d}'.format(veld.id)
-        for dag in range(89, -1, -1):
-            ts = (now - dt.timedelta(days=dag)).replace(
-                hour=random.randint(7, 16),
-                minute=random.randint(0, 59),
-                second=0, microsecond=0
-            )
-            fase = dag % 14
-            base = target_cm * 0.6 + (target_cm * 0.9 * fase / 14)
-            hoogte = round(max(1.0, base + random.gauss(0, target_cm * 0.08)), 1)
-            db.session.add(Meting(
-                device_id=device_id,
-                gras_hoogte_cm=hoogte,
-                latitude=veld.lat + random.uniform(-0.001, 0.001),
-                longitude=veld.lng + random.uniform(-0.001, 0.001),
-                timestamp=ts,
-            ))
-        geseeded += 1
-    if geseeded:
+        db_user = User.query.filter_by(username=u['username']).first()
+        if db_user and not db_user.device_id:
+            db_user.device_id = u['device_id']
+            device_aangepast += 1
+    if device_aangepast:
         db.session.commit()
-        print('Demo-metingen aangemaakt voor {} veld(en).'.format(geseeded))
+        print(f'Migratie: device-ID gekoppeld aan {device_aangepast} gebruiker(s).')
+
+    # Verwijder alle verzonnen/nooit-gemeten demo-metingen. Deze zijn altijd herkenbaar
+    # aan het device_id-voorvoegsel 'sensor-' (gebruikt door de oude demo-seed-functies),
+    # wat nooit overeenkomt met een echt Pico-device (dat heet bv. 'maaier_01').
+    # Dit is een eenmalige opschoning zodat grafieken alleen echte metingen tonen.
+    nep_metingen = Meting.query.filter(Meting.device_id.like('sensor-%')).delete(synchronize_session=False)
+    if nep_metingen:
+        db.session.commit()
+        print(f'{nep_metingen} verzonnen demo-meting(en) verwijderd.')
 
 
 # ── AUTH ROUTES ──
@@ -433,6 +404,7 @@ def get_users():
         'id': u.id, 'username': u.username,
         'name': u.name, 'role': u.role, 'label': u.label,
         'contractName': u.contract_name,
+        'deviceId': u.device_id,
     } for u in users])
 
 
@@ -456,15 +428,11 @@ def create_user():
         username=username,
         password_hash=hash_password(password),
         name=name, role=role, initials=initials, label=label,
-        contract_name=data.get('contract_name')
+        contract_name=data.get('contract_name'),
+        device_id=(data.get('device_id') or '').strip() or None,
     )
     db.session.add(user)
     db.session.commit()
-
-    # Koppel automatisch een sensor aan nieuwe machinisten
-    if role == 'machinist':
-        _seed_sensor_voor_machinist(username)
-
     return jsonify({'status': 'ok', 'id': user.id}), 201
 
 
@@ -496,6 +464,8 @@ def update_user(user_id):
         user.label = {'admin': 'Beheerder', 'machinist': 'Machinist', 'stakeholder': 'Stakeholder'}.get(data['role'], data['role'])
     if data.get('contract_name') is not None:
         user.contract_name = data['contract_name'] or None
+    if 'device_id' in data:
+        user.device_id = (data['device_id'] or '').strip() or None
     if data.get('password'):
         user.password_hash = hash_password(data['password'])
     db.session.commit()
@@ -513,10 +483,13 @@ def delete_user(user_id):
     if not user:
         return jsonify({'error': 'Gebruiker niet gevonden'}), 404
 
-    # Verwijder gekoppelde sensor-metingen als het een machinist is
-    if user.role == 'machinist':
-        device_id = 'sensor-' + user.username
-        Meting.query.filter_by(device_id=device_id).delete()
+    # Maak velden los die nog aan deze gebruiker gekoppeld waren
+    for veld in Veld.query.filter_by(machinist_id=user.id).all():
+        veld.machinist_id = None
+        veld.machinist = '—'
+    for veld in Veld.query.filter_by(stakeholder_id=user.id).all():
+        veld.stakeholder_id = None
+        veld.stakeholder = '—'
 
     db.session.delete(user)
     db.session.commit()
@@ -769,6 +742,40 @@ def delete_shapefile(laag_id):
     return jsonify({'status': 'ok'})
 
 
+@app.route('/api/shapefiles/<int:laag_id>/naar-veld/<int:veld_id>', methods=['POST'])
+def shapefile_naar_veldgrens(laag_id, veld_id):
+    """Gebruik de polygoon van een geüploade shapefile-feature als de echte
+       grens (rings) van een bestaand veld. Zo kan een ingeladen shapefile
+       direct de veldgrenzen op de kaart leveren."""
+    me = db.session.get(User, session.get('user_id'))
+    if not me or me.role != 'admin':
+        return jsonify({'error': 'Geen toegang'}), 403
+    laag = db.session.get(ShapeLayer, laag_id)
+    veld = db.session.get(Veld, veld_id)
+    if not laag or not veld:
+        return jsonify({'error': 'Niet gevonden'}), 404
+    data = request.get_json() or {}
+    feature_index = data.get('feature_index', 0)
+    geojson = json.loads(laag.geojson) if laag.geojson else None
+    if not geojson or not geojson.get('features'):
+        return jsonify({'error': 'Deze shapefile bevat geen vormen'}), 400
+    features = geojson['features']
+    if feature_index < 0 or feature_index >= len(features):
+        return jsonify({'error': 'Ongeldige feature-index'}), 400
+    geometrie = features[feature_index].get('geometry') or {}
+    rings = geometrie.get('coordinates')
+    if geometrie.get('type') != 'Polygon' or not rings:
+        return jsonify({'error': 'Alleen een polygoon-vorm kan als veldgrens gebruikt worden'}), 400
+    veld.rings = json.dumps(rings)
+    # Middelpunt van de buitenste ring herberekenen, zodat lat/lng bij de nieuwe vorm past
+    buitenring = rings[0]
+    if buitenring:
+        veld.lng = sum(p[0] for p in buitenring) / len(buitenring)
+        veld.lat = sum(p[1] for p in buitenring) / len(buitenring)
+    db.session.commit()
+    return jsonify(veld.to_dict())
+
+
 # ── SENSOR ROUTE ──
 
 @app.route('/data', methods=['POST'])
@@ -778,11 +785,21 @@ def ontvang_meting():
         return jsonify({"error": "Geen JSON data"}), 400
     hoogte = data.get('gras_hoogte_cm')
     device = data.get('device_id') or 'onbekend'
+
+    # Koppel de meting aan het veld waarvoor dit device momenteel actief aan het
+    # meten is (gezet via /api/meting/start). Zo weten we precies bij welk veld
+    # een meting hoort, in plaats van te gokken op basis van GPS-afstand.
+    veld_id = None
+    gebruiker = User.query.filter_by(device_id=device, role='machinist').first()
+    if gebruiker and gebruiker.actieve_veld_id:
+        veld_id = gebruiker.actieve_veld_id
+
     meting = Meting(
         device_id      = device,
         gras_hoogte_cm = hoogte,
         latitude       = data.get('latitude'),
-        longitude      = data.get('longitude')
+        longitude      = data.get('longitude'),
+        veld_id        = veld_id,
     )
     db.session.add(meting)
     # Activiteitenlog
@@ -797,6 +814,71 @@ def ontvang_meting():
     return jsonify({"status": "ok"}), 200
 
 
+@app.route('/api/meting/start', methods=['POST'])
+def start_meting():
+    """Machinist start een meting voor één van zijn toegewezen velden.
+       De Pico van deze machinist (gekoppeld via device_id) gaat hierna
+       echt meten zodra hij /api/pico/status opvraagt."""
+    me = db.session.get(User, session.get('user_id'))
+    if not me or me.role != 'machinist':
+        return jsonify({'error': 'Geen toegang'}), 403
+    if not me.device_id:
+        return jsonify({'error': 'Er is nog geen sensor (Pico) aan jouw account gekoppeld. Vraag de beheerder dit in te stellen bij Instellingen.'}), 400
+    data = request.get_json() or {}
+    veld = db.session.get(Veld, data.get('veld_id'))
+    if not veld or veld.machinist_id != me.id:
+        return jsonify({'error': 'Dit veld is niet aan jou toegewezen.'}), 403
+    me.actieve_veld_id = veld.id
+    db.session.add(ActivityLog(
+        user=me.name or me.username,
+        type='meting_start',
+        message=f'Meting gestart voor veld "{veld.naam}"',
+    ))
+    db.session.commit()
+    return jsonify({'status': 'ok', 'deviceId': me.device_id, 'veldId': veld.id})
+
+
+@app.route('/api/meting/stop', methods=['POST'])
+def stop_meting():
+    me = db.session.get(User, session.get('user_id'))
+    if not me or me.role != 'machinist':
+        return jsonify({'error': 'Geen toegang'}), 403
+    veld = db.session.get(Veld, me.actieve_veld_id) if me.actieve_veld_id else None
+    me.actieve_veld_id = None
+    db.session.add(ActivityLog(
+        user=me.name or me.username,
+        type='meting_stop',
+        message='Meting gestopt' + (f' voor veld "{veld.naam}"' if veld else ''),
+    ))
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
+@app.route('/api/meting/status', methods=['GET'])
+def meting_status():
+    """Voor de machinist-dashboard: laat zien of er nu een meting actief is
+       (bv. na een pagina-herlaad), zodat de knoppen meteen de juiste status tonen."""
+    me = db.session.get(User, session.get('user_id'))
+    if not me or me.role != 'machinist':
+        return jsonify({'error': 'Geen toegang'}), 403
+    return jsonify({
+        'actief':   bool(me.actieve_veld_id),
+        'veldId':   me.actieve_veld_id,
+        'deviceId': me.device_id,
+    })
+
+
+@app.route('/api/pico/status', methods=['GET'])
+def pico_status():
+    """Wordt zonder login opgevraagd door de Pico zelf (over wifi), op basis van
+       zijn eigen device_id. Geeft aan of hij nu moet meten en voor welk veld."""
+    device_id = request.args.get('device_id', '')
+    gebruiker = User.query.filter_by(device_id=device_id, role='machinist').first()
+    if not gebruiker or not gebruiker.actieve_veld_id:
+        return jsonify({'actief': False})
+    return jsonify({'actief': True, 'veld_id': gebruiker.actieve_veld_id})
+
+
 @app.route('/api/activiteiten', methods=['GET'])
 def get_activiteiten():
     if not session.get('user_id'):
@@ -808,8 +890,40 @@ def get_activiteiten():
 
 @app.route('/api/metingen', methods=['GET'])
 def get_metingen():
-    metingen = Meting.query.order_by(Meting.timestamp.desc()).all()
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    q = Meting.query
+    veld_id = request.args.get('veld_id', type=int)
+    device_id = request.args.get('device_id')
+    if veld_id is not None:
+        q = q.filter(Meting.veld_id == veld_id)
+    if device_id:
+        q = q.filter(Meting.device_id == device_id)
+    metingen = q.order_by(Meting.timestamp.desc()).all()
     return jsonify([m.to_dict() for m in metingen])
+
+
+@app.route('/api/meldingen/dismissed', methods=['GET'])
+def get_dismissed_meldingen():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    items = MeldingDismiss.query.filter_by(user_id=session['user_id']).all()
+    return jsonify([m.key for m in items])
+
+
+@app.route('/api/meldingen/dismiss', methods=['POST'])
+def dismiss_melding():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Niet ingelogd'}), 401
+    data = request.get_json() or {}
+    key = (data.get('key') or '').strip()
+    if not key:
+        return jsonify({'error': 'key is verplicht'}), 400
+    bestaat = MeldingDismiss.query.filter_by(user_id=session['user_id'], key=key).first()
+    if not bestaat:
+        db.session.add(MeldingDismiss(user_id=session['user_id'], key=key))
+        db.session.commit()
+    return jsonify({'status': 'ok'})
 
 
 # ── STATIC FILES ──

@@ -829,6 +829,10 @@
                     <label class="form-label" style="font-size:.8rem;font-weight:600">Contractnaam</label>
                     <input id="nu-contract" type="text" class="form-control form-control-sm" placeholder="bijv. Gemeente X" />
                   </div>
+                  <div class="col-md-3" id="nu-deviceid-wrap" style="display:none">
+                    <label class="form-label" style="font-size:.8rem;font-weight:600">Pico sensor-ID</label>
+                    <input id="nu-deviceid" type="text" class="form-control form-control-sm" placeholder="bijv. maaier_02" />
+                  </div>
                   <div class="col-12">
                     <div id="nu-error" style="font-size:.8rem;color:#dc3545;display:none"></div>
                     <button class="btn btn-sm px-4 mt-1" style="background:var(--g);color:#fff;font-weight:600" onclick="maakGebruiker()">
@@ -844,11 +848,12 @@
                       <th class="ps-3" style="border:none">Gebruikersnaam</th>
                       <th style="border:none">Naam</th>
                       <th style="border:none">Rol</th>
+                      <th style="border:none">Sensor</th>
                       <th style="border:none"></th>
                     </tr>
                   </thead>
                   <tbody id="users-tbody">
-                    <tr><td colspan="4" class="text-center py-3 text-muted">Laden…</td></tr>
+                    <tr><td colspan="5" class="text-center py-3 text-muted">Laden…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -920,6 +925,11 @@
           <label class="form-label fw-semibold" style="font-size:.83rem">Contractnaam</label>
           <input id="edit-contract" type="text" class="form-control" placeholder="bijv. Gemeente X" />
         </div>
+        <div class="mb-3" id="edit-deviceid-wrap" style="display:none">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Pico sensor-ID</label>
+          <input id="edit-deviceid" type="text" class="form-control" placeholder="bijv. maaier_02" />
+          <div style="font-size:.78rem;color:#888;margin-top:.25rem">Koppelt deze machinist aan een sensor, zodat hij metingen kan starten.</div>
+        </div>
         <div class="mb-3">
           <label class="form-label fw-semibold" style="font-size:.83rem">Nieuw wachtwoord <span style="color:#adb5bd;font-weight:400">(leeg = niet wijzigen)</span></label>
           <input id="edit-password" type="password" class="form-control" placeholder="••••••••" />
@@ -930,6 +940,37 @@
         <button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
         <button class="btn" style="background:var(--g);color:#fff;font-weight:600" onclick="slaEditOp()">
           <i class="bi bi-check-lg me-1"></i>Opslaan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Shapefile-vorm als veldgrens gebruiken -->
+<div class="modal fade" id="shpVeldModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--gp)">
+        <h6 class="modal-title fw-bold" style="color:var(--gd)"><i class="bi bi-bounding-box me-2"></i>Vorm gebruiken als veldgrens</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="shpveld-laag-id" />
+        <p style="font-size:.82rem;color:#666">Kies welke vorm uit deze shapefile en welk veld de echte grens moet krijgen. De huidige (noodrechthoek-)grens van het veld wordt vervangen.</p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Vorm (feature) uit de shapefile</label>
+          <select id="shpveld-feature" class="form-select"></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Veld</label>
+          <select id="shpveld-veld" class="form-select"></select>
+        </div>
+        <div id="shpveld-error" style="font-size:.84rem;color:#dc3545;display:none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+        <button class="btn" style="background:var(--g);color:#fff;font-weight:600" onclick="bevestigShpNaarVeld()">
+          <i class="bi bi-check-lg me-1"></i>Toepassen
         </button>
       </div>
     </div>
@@ -949,6 +990,7 @@ let ARCGIS_KEY = ''; // geladen via /api/config na login
 
 // Grasvelden — dynamisch geladen vanuit OpenStreetMap (Overpass API)
 let VELDEN = [];
+let DISMISSED_MELDINGEN = new Set();
 
 /* ── CONTRACTCATEGORIE STATE ── */
 const CAT_DEFAULTS = {
@@ -1218,15 +1260,9 @@ function bouwVeldChart(selector, veld, hoogte, toonTabel) {
   if (!el) return;
   el.innerHTML = '<div class="text-center py-3 text-muted"><i class="bi bi-arrow-clockwise spin me-2"></i>Laden…</div>';
 
-  fetch('/api/metingen')
+  fetch('/api/metingen?veld_id=' + veld.id)
     .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var MAX_DIST = 0.05;
-      var match = data.filter(function(m) {
-        if (!m.latitude || !m.longitude) return false;
-        return Math.abs(m.latitude - veld.lat) <= MAX_DIST && Math.abs(m.longitude - veld.lng) <= MAX_DIST;
-      });
-
+    .then(function(match) {
       var huidigCat = veldCategorie(veld.id);
       var catDef = CAT_INST[huidigCat] || CAT_DEFAULTS[huidigCat];
       var target = catDef.target || catDef.min; // al in mm
@@ -1311,7 +1347,13 @@ async function laadVeldenVanOSM() {
 
 
 function actualiseerNaLaden() {
-  laadGebruikersLijsten(function(){ actualiseerNaLadenIntern(); });
+  laadGebruikersLijsten(function(){ laadDismissedMeldingen(function(){ actualiseerNaLadenIntern(); }); });
+}
+function laadDismissedMeldingen(callback) {
+  fetch('/api/meldingen/dismissed', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(keys){ DISMISSED_MELDINGEN = new Set(keys); if (callback) callback(); })
+    .catch(function(){ if (callback) callback(); });
 }
 function actualiseerNaLadenIntern() {
   updateMeldingenBadge();
@@ -1352,13 +1394,13 @@ function maakPolygon(lat, lng, rings) {
 // Kleur op basis van maai-status
 function statusSymbol(status) {
   const cfg = {
-    'Hoog':          { fill:[244,67,54,18],   border:[220,30,20,255],   w:3   },
-    'Te laag':       { fill:[255,152,0,18],   border:[230,120,0,255],   w:2.5 },
-    'OK':            { fill:[76,175,80,18],   border:[40,130,45,255],   w:2.5 },
-    'In uitvoering': { fill:[33,150,243,18],  border:[20,100,200,255],  w:2.5 },
-    'Gemaaid':       { fill:[156,39,176,18],  border:[120,20,150,255],  w:2.5 },
+    'Hoog':          { fill:[244,67,54,65],   border:[220,30,20,255],   w:3.5 },
+    'Te laag':       { fill:[255,152,0,65],   border:[230,120,0,255],   w:3   },
+    'OK':            { fill:[76,175,80,65],   border:[40,130,45,255],   w:3   },
+    'In uitvoering': { fill:[33,150,243,65],  border:[20,100,200,255],  w:3   },
+    'Gemaaid':       { fill:[156,39,176,65],  border:[120,20,150,255],  w:3   },
   };
-  const c = cfg[status] || { fill:[120,120,120,15], border:[80,80,80,255], w:2 };
+  const c = cfg[status] || { fill:[120,120,120,60], border:[80,80,80,255], w:3 };
   return {
     type: 'simple-fill',
     color: c.fill,
@@ -1387,25 +1429,26 @@ function initMap(containerId, showAll) {
 
     const layer = new GraphicsLayer();
 
-    // Alleen op de routekaart (machinist) velden tekenen, niet op de live kaart
-    if (!showAll) {
-      const veldenToShow = getRoute();
-      veldenToShow.forEach((v, idx) => {
-        const geom = maakPolygon(v.lat, v.lng, v.rings || null);
-        layer.add(new Graphic({
-          geometry: geom,
-          symbol: statusSymbol(v.status),
-          attributes: { ...v, routeNr: idx + 1 },
-          popupTemplate: {
-            title: `{naam} — {loc}`,
-            content: `<table class="esri-widget__table">
-              <tr><th>Status</th><td>{status}</td></tr>
-              <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
-              <tr><th>Prioriteit</th><td>{prio}</td></tr>
-              <tr><th>Machinist</th><td>{machinist}</td></tr>
-            </table>`,
-          },
-        }));
+    // Op de live kaart (/kaart) tonen we ALLE velden; op de routekaart (/route)
+    // alleen de velden in de berekende route (met volgnummer).
+    const veldenToShow = showAll ? VELDEN : getRoute();
+    veldenToShow.forEach((v, idx) => {
+      const geom = maakPolygon(v.lat, v.lng, v.rings || null);
+      layer.add(new Graphic({
+        geometry: geom,
+        symbol: statusSymbol(v.status),
+        attributes: { ...v, routeNr: idx + 1 },
+        popupTemplate: {
+          title: `{naam} — {loc}`,
+          content: `<table class="esri-widget__table">
+            <tr><th>Status</th><td>{status}</td></tr>
+            <tr><th>Grashoogte</th><td>{hoogte} mm</td></tr>
+            <tr><th>Prioriteit</th><td>{prio}</td></tr>
+            <tr><th>Machinist</th><td>{machinist}</td></tr>
+          </table>`,
+        },
+      }));
+      if (!showAll) {
         layer.add(new Graphic({
           geometry: { type:'point', longitude: v.lng, latitude: v.lat },
           symbol: {
@@ -1413,8 +1456,8 @@ function initMap(containerId, showAll) {
             text: String(idx + 1), font:{ size:10, weight:'bold' },
           },
         }));
-      });
-    }
+      }
+    });
 
     map.add(layer);
     mapViews[containerId].layer = layer;
@@ -1428,12 +1471,10 @@ function initMap(containerId, showAll) {
 function refreshMap(containerId, showAll) {
   const cached = mapViews[containerId];
   if (!cached) return;
-  // Op de live kaart (showAll=true) tekenen we geen veld-overlays — alleen shapefiles
-  if (showAll) { refreshShapeLayers(containerId); return; }
   require(['esri/Graphic','esri/layers/GraphicsLayer'],
     function(Graphic, GraphicsLayer) {
       cached.layer.removeAll();
-      const veldenToShow = getRoute();
+      const veldenToShow = showAll ? VELDEN : getRoute();
       veldenToShow.forEach((v, idx) => {
         const geom = maakPolygon(v.lat, v.lng, v.rings || null);
         cached.layer.add(new Graphic({
@@ -1450,7 +1491,17 @@ function refreshMap(containerId, showAll) {
             </table>`,
           },
         }));
+        if (!showAll) {
+          cached.layer.add(new Graphic({
+            geometry: { type:'point', longitude: v.lng, latitude: v.lat },
+            symbol: {
+              type:'text', color:[255,255,255], haloColor:[0,0,0], haloSize:1.5,
+              text: String(idx + 1), font:{ size:10, weight:'bold' },
+            },
+          }));
+        }
       });
+      if (showAll) refreshShapeLayers(containerId);
     }
   );
 }
@@ -2438,14 +2489,15 @@ function laadGebruikers() {
           <td class="ps-3 fw-semibold">${u.username}</td>
           <td>${u.name}</td>
           <td><span class="badge" style="background:${rolKleur[u.role]||'#eee;color:#333'}">${rolNaam[u.role]||u.role}</span></td>
+          <td>${u.role==='machinist' ? (u.deviceId ? `<span class="badge" style="background:#e8f5e9;color:#2e7d32"><i class="bi bi-cpu me-1"></i>${u.deviceId}</span>` : `<span style="font-size:.78rem;color:#dc3545">niet gekoppeld</span>`) : ''}</td>
           <td class="pe-3 text-end" style="white-space:nowrap">
-            <button class="btn btn-sm btn-outline-secondary me-1" style="font-size:.72rem;padding:.2rem .6rem" onclick="openEditGebruiker(${u.id},'${u.username}','${u.name}','${u.role}',${u.role==='admin' && adminCount<=1})"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-secondary me-1" style="font-size:.72rem;padding:.2rem .6rem" onclick="openEditGebruiker(${u.id},'${u.username}','${u.name}','${u.role}',${u.role==='admin' && adminCount<=1},'${u.deviceId||''}')"><i class="bi bi-pencil"></i></button>
             ${u.username !== CU?.username ? `<button class="btn btn-sm btn-outline-danger" style="font-size:.72rem;padding:.2rem .6rem" onclick="verwijderGebruiker(${u.id},'${u.username}')"><i class="bi bi-trash"></i></button>` : ''}
           </td>
         </tr>`).join('');
     })
     .catch(() => {
-      document.getElementById('users-tbody').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Fout bij laden</td></tr>';
+      document.getElementById('users-tbody').innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger">Fout bij laden</td></tr>';
     });
 }
 
@@ -2457,6 +2509,7 @@ function toggleNieuwGebruiker() {
 function toggleContractVeld() {
   const rol = document.getElementById('nu-role').value;
   document.getElementById('nu-contract-wrap').style.display = rol === 'stakeholder' ? '' : 'none';
+  document.getElementById('nu-deviceid-wrap').style.display = rol === 'machinist' ? '' : 'none';
 }
 
 function maakGebruiker() {
@@ -2465,6 +2518,7 @@ function maakGebruiker() {
   const password = document.getElementById('nu-password').value;
   const role     = document.getElementById('nu-role').value;
   const contract = document.getElementById('nu-contract').value.trim();
+  const deviceId = document.getElementById('nu-deviceid').value.trim();
   const errEl    = document.getElementById('nu-error');
   errEl.style.display = 'none';
 
@@ -2478,7 +2532,7 @@ function maakGebruiker() {
   fetch('/api/users', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name, username, password, role, contract_name: contract || null})
+    body: JSON.stringify({name, username, password, role, contract_name: contract || null, device_id: role === 'machinist' ? (deviceId || null) : null})
   })
   .then(r => r.json().then(d => ({ok: r.ok, d})))
   .then(({ok, d}) => {
@@ -2486,6 +2540,7 @@ function maakGebruiker() {
       document.getElementById('nu-name').value = '';
       document.getElementById('nu-username').value = '';
       document.getElementById('nu-password').value = '';
+      document.getElementById('nu-deviceid').value = '';
       document.getElementById('nieuw-gebruiker-form').style.display = 'none';
       laadGebruikers();
       laadGebruikersLijsten(function(){ renderVelden(VELDEN); });
@@ -2496,12 +2551,13 @@ function maakGebruiker() {
   });
 }
 
-function openEditGebruiker(id, username, name, role, isLaatsteAdmin) {
+function openEditGebruiker(id, username, name, role, isLaatsteAdmin, deviceId) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-username-lbl').textContent = username;
   document.getElementById('edit-username').value = username;
   document.getElementById('edit-name').value = name;
   document.getElementById('edit-role').value = role;
+  document.getElementById('edit-deviceid').value = deviceId || '';
   document.getElementById('edit-password').value = '';
   document.getElementById('edit-error').style.display = 'none';
   var roleSelect = document.getElementById('edit-role');
@@ -2515,6 +2571,7 @@ function openEditGebruiker(id, username, name, role, isLaatsteAdmin) {
 function toggleEditContract() {
   const rol = document.getElementById('edit-role').value;
   document.getElementById('edit-contract-wrap').style.display = rol === 'stakeholder' ? '' : 'none';
+  document.getElementById('edit-deviceid-wrap').style.display = rol === 'machinist' ? '' : 'none';
 }
 
 function slaEditOp() {
@@ -2523,6 +2580,7 @@ function slaEditOp() {
   const name     = document.getElementById('edit-name').value.trim();
   const role     = document.getElementById('edit-role').value;
   const contract = document.getElementById('edit-contract').value.trim();
+  const deviceId = document.getElementById('edit-deviceid').value.trim();
   const password = document.getElementById('edit-password').value;
   const errEl    = document.getElementById('edit-error');
   errEl.style.display = 'none';
@@ -2531,7 +2589,7 @@ function slaEditOp() {
   if (!name) { errEl.textContent = 'Naam is verplicht.'; errEl.style.display = 'block'; return; }
   if (password && password.length < 6) { errEl.textContent = 'Wachtwoord minimaal 6 tekens.'; errEl.style.display = 'block'; return; }
 
-  const body = {username, name, role, contract_name: contract || null};
+  const body = {username, name, role, contract_name: contract || null, device_id: role === 'machinist' ? (deviceId || null) : null};
   if (password) body.password = password;
 
   fetch(`/api/users/${id}`, {
@@ -2580,20 +2638,32 @@ function laadNotifPrefs() {
 function berekenMeldingen() {
   const prefs = laadNotifPrefs();
   const meldingen = [];
+  // Beheerder ziet meldingen over alle velden van alle machinisten/stakeholders
   VELDEN.forEach(function(v) {
     const cat = veldCategorie(v.id);
     const inst = CAT_INST[cat] || CAT_INST['C'];
     if (prefs.n1 && v.hoogte > inst.max) {
-      meldingen.push({ type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
+      meldingen.push({ key:'hoog-'+v.id, type:'hoog', icon:'🔴', tekst: v.naam + ': gras te hoog (' + v.hoogte + 'mm, max ' + inst.max + 'mm)' });
     }
     if (prefs.n2 && v.hoogte < inst.min && v.hoogte > 0) {
-      meldingen.push({ type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
+      meldingen.push({ key:'laag-'+v.id, type:'laag', icon:'🟡', tekst: v.naam + ': gras te laag (' + v.hoogte + 'mm, min ' + inst.min + 'mm)' });
     }
     if (prefs.n3 && v.status === 'Gemaaid') {
-      meldingen.push({ type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
+      meldingen.push({ key:'klaar-'+v.id, type:'klaar', icon:'✅', tekst: v.naam + ': klaar maaien gemeld' });
     }
   });
-  return meldingen;
+  return meldingen.filter(function(m){ return !DISMISSED_MELDINGEN.has(m.key); });
+}
+function verbergMelding(key) {
+  DISMISSED_MELDINGEN.add(key);
+  fetch('/api/meldingen/dismiss', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: key }),
+  }).catch(function(){});
+  renderNotifDropdownList();
+  updateMeldingenBadge();
+  if (document.getElementById('page-notificaties')?.classList.contains('active')) renderNotificatiePagina();
 }
 function updateMeldingenBadge() {
   const badge = document.getElementById('notif-badge');
@@ -2618,25 +2688,29 @@ function toggleNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');
   if (!dd) return;
   if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  renderNotifDropdownList();
+  dd.classList.add('open');
+}
+function renderNotifDropdownList() {
   const meldingen = berekenMeldingen();
   const list = document.getElementById('notif-list');
+  if (!list) return;
   if (meldingen.length === 0) {
     list.innerHTML = '<div class="notif-empty"><i class="bi bi-check-circle" style="font-size:1.5rem;color:#2e7d32"></i><br>Geen actieve meldingen</div>';
-  } else {
-    list.innerHTML = meldingen.map(function(m, i) {
-      return `<div class="notif-item" style="cursor:pointer" onclick="sluitNotifDropdown();showPage('notificaties')">
-        <span class="ni-icon">${m.icon}</span>
-        <span style="flex:1">${m.tekst}</span>
-        <i class="bi bi-chevron-right" style="color:#adb5bd;font-size:.75rem;flex-shrink:0"></i>
-      </div>`;
-    }).join('');
-    list.innerHTML += `<div style="padding:.6rem 1rem;text-align:center;border-top:1px solid #f0f0f0">
-      <button onclick="sluitNotifDropdown();showPage('notificaties')" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer">
-        Alle meldingen bekijken <i class="bi bi-arrow-right ms-1"></i>
-      </button>
-    </div>`;
+    return;
   }
-  dd.classList.add('open');
+  list.innerHTML = meldingen.map(function(m) {
+    return `<div class="notif-item">
+      <span class="ni-icon">${m.icon}</span>
+      <span style="flex:1;cursor:pointer" onclick="sluitNotifDropdown();showPage('notificaties')">${m.tekst}</span>
+      <button onclick="verbergMelding('${m.key}')" title="Melding wegklikken" style="background:none;border:none;color:#adb5bd;font-size:.85rem;cursor:pointer;padding:0;flex-shrink:0"><i class="bi bi-x-lg"></i></button>
+    </div>`;
+  }).join('');
+  list.innerHTML += `<div style="padding:.6rem 1rem;text-align:center;border-top:1px solid #f0f0f0">
+    <button onclick="sluitNotifDropdown();showPage('notificaties')" style="background:none;border:none;color:var(--g);font-size:.82rem;font-weight:600;cursor:pointer">
+      Alle meldingen bekijken <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+  </div>`;
 }
 function sluitNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');
@@ -2692,6 +2766,7 @@ function renderNotificatiePagina() {
           <i class="bi bi-map me-1"></i>Ga naar locatie
         </button>` : ''}
       </div>
+      <button onclick="verbergMelding('${m.key}')" title="Melding wegklikken" style="background:none;border:none;color:#adb5bd;font-size:1rem;cursor:pointer;padding:0 .25rem;flex-shrink:0"><i class="bi bi-x-lg"></i></button>
     </div>`;
   }).join('');
 }
@@ -2823,6 +2898,10 @@ function laadShapefilePagina() {
           </div>
           <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
             <span style="width:18px;height:18px;border-radius:4px;background:${l.kleur};display:inline-block;border:2px solid rgba(0,0,0,.1)"></span>
+            ${featureCount ? `<button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:8px;font-size:.78rem;font-weight:600"
+              onclick="openShpNaarVeld(${l.id},${featureCount})">
+              <i class="bi bi-bounding-box me-1"></i>Als veldgrens
+            </button>` : ''}
             <button class="btn btn-sm" style="background:#f3f4f6;color:var(--g);border:1px solid #c8e6c9;border-radius:8px;font-size:.78rem;font-weight:600"
               onclick="showPage('kaart')">
               <i class="bi bi-map me-1"></i>Bekijk op kaart
